@@ -4,7 +4,7 @@ enum Status {
     Carry,
     Zero,
     InterruptDisable,
-    DecimalMode,
+    DecimalMode, // No effect on the NES.
     Break1,
     Break2,
     Overflow,
@@ -67,10 +67,11 @@ pub struct Registers {
     // 1 - Zero flag: set if the last op resulted in zero.
     // 2 - Interrupt disable: set if interrupts have been disabled by SEI, and
     //     and not yet cleared by CLI.
-    // 3 - Decimal mode: set by SED and cleared by CLD. When set, arithmetic
-    //     operations will obey Binary Coded Decimal (BCD). The low four bits
-    //     represent the low decimal digit, and the high four bits represent the
-    //     high decimal digit.
+    // 3 - Decimal mode: no effect on the NES. For reference, this status is set
+    //     by SED and cleared by CLD. When set, arithmetic operations will obey
+    //     Binary Coded Decimal (BCD). A byte represents a two-digit decimal
+    //     number, with the low nibble representing the low digit, and the high
+    //     nibble representing the high digit.
     // 4 - Break command
     // 5 - Overflow flag: set if the last op resulted in a value greater than
     //     127. If this flag is set, the negative flag will also be set.
