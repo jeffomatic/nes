@@ -212,6 +212,26 @@ impl Cpu {
                 self.set_status(Status::Zero, res == 0);
                 self.set_status(Status::Negative, (res & 0b1000_0000) != 0);
             }
+            Instruction::Asl => {
+                // TODO: memory update version
+                let prev = self.registers.a;
+                let res = self.registers.a << 1;
+
+                self.registers.a = res;
+                self.set_status(Status::Carry, prev & 0b1000_0000 != 0);
+                self.set_status(Status::Zero, res == 0);
+                self.set_status(Status::Negative, res & 0b1000_0000 != 0);
+            }
+            Instruction::Lsr => {
+                // TODO: memory update version
+                let prev = self.registers.a;
+                let res = self.registers.a >> 1;
+
+                self.registers.a = res;
+                self.set_status(Status::Carry, prev & 1 != 0);
+                self.set_status(Status::Zero, res == 0);
+                self.set_status(Status::Negative, res & 0b1000_0000 != 0);
+            }
             other => panic!("instruction {:?} not implemented", other),
         }
     }
@@ -377,6 +397,95 @@ fn test_and() {
         cpu.execute(&ConcreteInstruction {
             ins: Instruction::And,
             operand8: Some(c.operand),
+            operand16: None,
+        });
+
+        assert_eq!(cpu.registers.a, c.want_a, "case {}: accumulator", i);
+        assert_eq!(cpu.registers.p, c.want_p, "case {}: procesor status", i);
+    }
+}
+
+#[test]
+fn test_asl() {
+    struct Case {
+        a: u8,
+        want_a: u8,
+        want_p: u8,
+    }
+
+    for (i, c) in [
+        Case {
+            a: 0,
+            want_a: 0,
+            want_p: Status::Zero.mask(),
+        },
+        Case {
+            a: 0b1,
+            want_a: 0b10,
+            want_p: 0,
+        },
+        Case {
+            a: 0b1000_0001,
+            want_a: 0b0000_0010,
+            want_p: Status::Carry.mask(),
+        },
+        Case {
+            a: 0b1100_0000,
+            want_a: 0b1000_0000,
+            want_p: Status::Carry.mask() | Status::Negative.mask(),
+        },
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mut cpu = Cpu::new();
+        cpu.registers.a = c.a;
+
+        cpu.execute(&ConcreteInstruction {
+            ins: Instruction::Asl,
+            operand8: None,
+            operand16: None,
+        });
+
+        assert_eq!(cpu.registers.a, c.want_a, "case {}: accumulator", i);
+        assert_eq!(cpu.registers.p, c.want_p, "case {}: procesor status", i);
+    }
+}
+
+#[test]
+fn test_lsr() {
+    struct Case {
+        a: u8,
+        want_a: u8,
+        want_p: u8,
+    }
+
+    for (i, c) in [
+        Case {
+            a: 0,
+            want_a: 0,
+            want_p: Status::Zero.mask(),
+        },
+        Case {
+            a: 0b1000_0000,
+            want_a: 0b0100_0000,
+            want_p: 0,
+        },
+        Case {
+            a: 0b11,
+            want_a: 1,
+            want_p: Status::Carry.mask(),
+        },
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mut cpu = Cpu::new();
+        cpu.registers.a = c.a;
+
+        cpu.execute(&ConcreteInstruction {
+            ins: Instruction::Lsr,
+            operand8: None,
             operand16: None,
         });
 
