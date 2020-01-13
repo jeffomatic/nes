@@ -193,7 +193,7 @@ impl Cpu {
                 let prev = self.registers.a;
                 let operand = ci.operand8.unwrap();
                 let res = self.registers.a.wrapping_add(operand);
-                let negative = (res & 0b1000_0000) > 0;
+                let negative = (res & 0b1000_0000) != 0;
 
                 self.registers.a = res;
                 self.set_status(Status::Carry, res < prev);
@@ -203,6 +203,13 @@ impl Cpu {
                     (prev as i8 >= 0) && (operand as i8 >= 0) && negative,
                 );
                 self.set_status(Status::Negative, negative);
+            }
+            Instruction::And => {
+                let res = self.registers.a & ci.operand8.unwrap();
+
+                self.registers.a = res;
+                self.set_status(Status::Zero, res == 0);
+                self.set_status(Status::Negative, (res & 0b1000_0000) != 0);
             }
             other => panic!("instruction {:?} not implemented", other),
         }
@@ -266,7 +273,6 @@ fn test_adc() {
     struct Case {
         operand: u8,
         a: u8,
-        p: u8,
         want_a: u8,
         want_p: u8,
     }
@@ -275,42 +281,36 @@ fn test_adc() {
         Case {
             operand: 0,
             a: 0,
-            p: 0,
             want_a: 0,
             want_p: Status::Zero.mask(),
         },
         Case {
             operand: 0,
             a: 1,
-            p: 0,
             want_a: 1,
             want_p: 0,
         },
         Case {
             operand: 1,
             a: 0,
-            p: 0,
             want_a: 1,
             want_p: 0,
         },
         Case {
             operand: 0,
             a: 0xFF,
-            p: 0,
             want_a: 0xFF,
             want_p: Status::Negative.mask(),
         },
         Case {
             operand: 1,
             a: 0xFF,
-            p: 0,
             want_a: 0,
             want_p: Status::Carry.mask() | Status::Zero.mask(),
         },
         Case {
             operand: 0x7F,
             a: 0x7F,
-            p: 0,
             want_a: 0xFE,
             want_p: Status::Overflow.mask() | Status::Negative.mask(),
         },
@@ -320,10 +320,61 @@ fn test_adc() {
     {
         let mut cpu = Cpu::new();
         cpu.registers.a = c.a;
-        cpu.registers.p = c.p;
 
         cpu.execute(&ConcreteInstruction {
             ins: Instruction::Adc,
+            operand8: Some(c.operand),
+            operand16: None,
+        });
+
+        assert_eq!(cpu.registers.a, c.want_a, "case {}: accumulator", i);
+        assert_eq!(cpu.registers.p, c.want_p, "case {}: procesor status", i);
+    }
+}
+
+#[test]
+fn test_and() {
+    struct Case {
+        operand: u8,
+        a: u8,
+        want_a: u8,
+        want_p: u8,
+    }
+
+    for (i, c) in [
+        Case {
+            operand: 0,
+            a: 1,
+            want_a: 0,
+            want_p: Status::Zero.mask(),
+        },
+        Case {
+            operand: 0,
+            a: 1,
+            want_a: 0,
+            want_p: Status::Zero.mask(),
+        },
+        Case {
+            operand: 0x10,
+            a: 0x11,
+            want_a: 0x10,
+            want_p: 0,
+        },
+        Case {
+            operand: 0x80,
+            a: 0x81,
+            want_a: 0x80,
+            want_p: Status::Negative.mask(),
+        },
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mut cpu = Cpu::new();
+        cpu.registers.a = c.a;
+
+        cpu.execute(&ConcreteInstruction {
+            ins: Instruction::And,
             operand8: Some(c.operand),
             operand16: None,
         });
