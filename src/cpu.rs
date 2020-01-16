@@ -203,7 +203,7 @@ impl Cpu {
                 self.set_status(Status::Zero, res == 0);
                 self.set_status(
                     Status::Overflow,
-                    (prev as i8 >= 0) && (operand as i8 >= 0) && negative,
+                    !math::is_negative(prev) && !math::is_negative(operand) && negative,
                 );
                 self.set_status(Status::Negative, negative);
             }

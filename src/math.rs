@@ -22,3 +22,7 @@ pub fn test_byte_addr_offset() {
     assert_eq!(byte_addr_offset(0x80, 0x7F), 0xFF);
     assert_eq!(byte_addr_offset(0xFF80, 0x7F), 0xFFFF);
 }
+
+pub fn is_negative(x: u8) -> bool {
+    x & 0b1000_0000 != 0
+}
