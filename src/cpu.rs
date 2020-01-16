@@ -5,8 +5,8 @@ enum Status {
     Zero,
     InterruptDisable,
     DecimalMode, // No effect on the NES.
-    Break1,
-    Break2,
+    BreakCommand,
+    ExpansionBit,
     Overflow,
     Negative,
 }
@@ -18,8 +18,8 @@ impl Status {
             Self::Zero => 1,
             Self::InterruptDisable => 2,
             Self::DecimalMode => 3,
-            Self::Break1 => 4,
-            Self::Break2 => 5,
+            Self::BreakCommand => 4,
+            Self::ExpansionBit => 5,
             Self::Overflow => 6,
             Self::Negative => 7,
         }
@@ -72,10 +72,12 @@ pub struct Registers {
     //     Binary Coded Decimal (BCD). A byte represents a two-digit decimal
     //     number, with the low nibble representing the low digit, and the high
     //     nibble representing the high digit.
-    // 4 - Break command
-    // 5 - Overflow flag: set if the last op resulted in a value greater than
+    // 4 - Break command: set during an interrupt sequence if the interrupt
+    //     occurred due to user command.
+    // 5 - Expansion bit: unused
+    // 6 - Overflow flag: set if the last op resulted in a value greater than
     //     127. If this flag is set, the negative flag will also be set.
-    // 6 - Negative flag: set if the last op resulted in a high bit of 1.
+    // 7 - Negative flag: set if the last op resulted in a high bit of 1.
     pub p: u8,
 }
 
