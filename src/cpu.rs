@@ -101,7 +101,7 @@ pub enum AddressMode {
 
 // Reference: http://obelisk.me.uk/6502/reference.html
 #[derive(Clone, Copy, Debug)]
-pub enum Instruction {
+pub enum Opcode {
     Adc, // Add with carry
     And, // Bitwise and
     Asl, // Arithmetic shift left
@@ -160,8 +160,8 @@ pub enum Instruction {
     Tya, // Transfer Y to accumulator
 }
 
-pub struct ConcreteInstruction {
-    ins: Instruction,
+pub struct Instruction {
+    ins: Opcode,
     operand8: Option<u8>,
     operand16: Option<u16>,
 }
@@ -190,9 +190,9 @@ impl Cpu {
         self.registers.p = s.set_into(self.registers.p, on)
     }
 
-    pub fn execute(&mut self, ci: &ConcreteInstruction) {
+    pub fn execute(&mut self, ci: &Instruction) {
         match ci.ins {
-            Instruction::Adc => {
+            Opcode::Adc => {
                 let prev = self.registers.a;
                 let operand = ci.operand8.unwrap();
                 let res = self.registers.a.wrapping_add(operand);
@@ -207,14 +207,14 @@ impl Cpu {
                 );
                 self.set_status(Status::Negative, negative);
             }
-            Instruction::And => {
+            Opcode::And => {
                 let res = self.registers.a & ci.operand8.unwrap();
 
                 self.registers.a = res;
                 self.set_status(Status::Zero, res == 0);
                 self.set_status(Status::Negative, (res & 0b1000_0000) != 0);
             }
-            Instruction::Asl => {
+            Opcode::Asl => {
                 // TODO: memory update version
                 let prev = self.registers.a;
                 let res = self.registers.a << 1;
@@ -224,7 +224,7 @@ impl Cpu {
                 self.set_status(Status::Zero, res == 0);
                 self.set_status(Status::Negative, res & 0b1000_0000 != 0);
             }
-            Instruction::Lsr => {
+            Opcode::Lsr => {
                 // TODO: memory update version
                 let prev = self.registers.a;
                 let res = self.registers.a >> 1;
@@ -234,7 +234,7 @@ impl Cpu {
                 self.set_status(Status::Zero, res == 0);
                 self.set_status(Status::Negative, res & 0b1000_0000 != 0);
             }
-            other => panic!("instruction {:?} not implemented", other),
+            other => panic!("opcode {:?} not implemented", other),
         }
     }
 
@@ -344,8 +344,8 @@ fn test_adc() {
         let mut cpu = Cpu::new();
         cpu.registers.a = c.a;
 
-        cpu.execute(&ConcreteInstruction {
-            ins: Instruction::Adc,
+        cpu.execute(&Instruction {
+            ins: Opcode::Adc,
             operand8: Some(c.operand),
             operand16: None,
         });
@@ -396,8 +396,8 @@ fn test_and() {
         let mut cpu = Cpu::new();
         cpu.registers.a = c.a;
 
-        cpu.execute(&ConcreteInstruction {
-            ins: Instruction::And,
+        cpu.execute(&Instruction {
+            ins: Opcode::And,
             operand8: Some(c.operand),
             operand16: None,
         });
@@ -443,8 +443,8 @@ fn test_asl() {
         let mut cpu = Cpu::new();
         cpu.registers.a = c.a;
 
-        cpu.execute(&ConcreteInstruction {
-            ins: Instruction::Asl,
+        cpu.execute(&Instruction {
+            ins: Opcode::Asl,
             operand8: None,
             operand16: None,
         });
@@ -485,8 +485,8 @@ fn test_lsr() {
         let mut cpu = Cpu::new();
         cpu.registers.a = c.a;
 
-        cpu.execute(&ConcreteInstruction {
-            ins: Instruction::Lsr,
+        cpu.execute(&Instruction {
+            ins: Opcode::Lsr,
             operand8: None,
             operand16: None,
         });
