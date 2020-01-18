@@ -6,7 +6,7 @@ use crate::math;
 fn update(registers: &Registers, operand: u8) -> Vec<Update> {
     let prev = registers.a;
     let res = prev.wrapping_add(operand);
-    let negative = (res & 0b1000_0000) != 0;
+    let negative = math::is_negative(res);
     vec![
         Update::Accumulator(res),
         Update::Status(Status::Carry, res < prev),
