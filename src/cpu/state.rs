@@ -1,7 +1,7 @@
 use super::super::memory;
 use super::registers;
 
-struct State {
-    regs: registers::Registers,
-    mem: memory::Memory,
+pub struct State {
+    pub regs: registers::Registers,
+    pub mem: memory::Memory,
 }
