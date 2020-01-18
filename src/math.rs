@@ -1,12 +1,12 @@
-pub fn bytes_to_u16_le(bytes: &[u8; 2]) -> u16 {
+pub fn bytes_to_u16_le(bytes: [u8; 2]) -> u16 {
     ((bytes[1] as u16) << 8) | (bytes[0] as u16)
 }
 
 #[test]
 pub fn test_bytes_to_u16_le() {
-    assert_eq!(bytes_to_u16_le(&[0xFF, 0xFF]), 0xFFFF);
-    assert_eq!(bytes_to_u16_le(&[0x00, 0xFF]), 0xFF00);
-    assert_eq!(bytes_to_u16_le(&[0xFF, 0x00]), 0xFF);
+    assert_eq!(bytes_to_u16_le([0xFF, 0xFF]), 0xFFFF);
+    assert_eq!(bytes_to_u16_le([0x00, 0xFF]), 0xFF00);
+    assert_eq!(bytes_to_u16_le([0xFF, 0x00]), 0xFF);
 }
 
 pub fn byte_addr_offset(src: u16, offset: u8) -> u16 {
