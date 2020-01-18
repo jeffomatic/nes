@@ -7,6 +7,7 @@ use std::time::Duration;
 
 mod cpu;
 mod math;
+mod memory;
 
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
