@@ -179,6 +179,8 @@ fn fetch_operand(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> Opti
         AddressMode::Implicit => None,
         AddressMode::Accumulator => Some(Opval::Byte(regs.a)),
         AddressMode::Immediate => Some(Opval::Byte(mem.read(regs.pc + 1))),
+
+        // TODO: zero page wraparound
         AddressMode::ZeroPage => Some(Opval::Byte(mem.read(mem.read(regs.pc + 1) as u16))),
         AddressMode::ZeroPageX => Some(Opval::Byte(
             mem.read(mem.read(regs.pc + 1) as u16 + regs.x as u16),
@@ -186,11 +188,23 @@ fn fetch_operand(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> Opti
         AddressMode::ZeroPageY => Some(Opval::Byte(
             mem.read(mem.read(regs.pc + 1) as u16 + regs.y as u16),
         )),
+
         AddressMode::Relative => Some(Opval::Address(math::byte_addr_offset(
             regs.pc,
             mem.read(regs.pc + 1),
         ))),
-        _ => unimplemented!(),
+        AddressMode::Absolute => Some(Opval::Address(mem.read16(regs.pc + 1))),
+        AddressMode::AbsoluteX => Some(Opval::Address(mem.read16(regs.pc + 1) + regs.x as u16)),
+        AddressMode::AbsoluteY => Some(Opval::Address(mem.read16(regs.pc + 1) + regs.y as u16)),
+        AddressMode::Indirect => Some(Opval::Address(mem.read16(mem.read16(regs.pc + 1)))),
+
+        // TODO: zero page wraparound
+        AddressMode::IndirectX => Some(Opval::Address(
+            mem.read16(mem.read(regs.pc + 1) as u16 + regs.x as u16),
+        )),
+        AddressMode::IndirectY => Some(Opval::Address(
+            mem.read16(mem.read(regs.pc + 1) as u16) + regs.y as u16,
+        )),
     }
 }
 
@@ -207,6 +221,9 @@ fn test_fetch_operand() {
     mem.write(0xF0, 0xBB);
     mem.write(0xF1, 0xCC);
     mem.write(0x201, 0xEE);
+    mem.write(0x202, 0x03);
+    mem.write(0x3EE, 0xDD);
+    mem.write(0x3EF, 0x04);
 
     assert_eq!(fetch_operand(&regs, &mem, AddressMode::Implicit), None);
 
@@ -238,6 +255,60 @@ fn test_fetch_operand() {
     assert_eq!(
         fetch_operand(&regs, &mem, AddressMode::Relative),
         Some(Opval::Address(0x1EE))
+    );
+
+    assert_eq!(
+        fetch_operand(&regs, &mem, AddressMode::Absolute),
+        Some(Opval::Address(0x3EE))
+    );
+
+    assert_eq!(
+        fetch_operand(&regs, &mem, AddressMode::AbsoluteX),
+        Some(Opval::Address(0x3F0))
+    );
+
+    assert_eq!(
+        fetch_operand(&regs, &mem, AddressMode::AbsoluteY),
+        Some(Opval::Address(0x3F1))
+    );
+
+    assert_eq!(
+        fetch_operand(&regs, &mem, AddressMode::Indirect),
+        Some(Opval::Address(0x4DD))
+    );
+}
+
+#[test]
+fn test_fetch_operand_indirect_x() {
+    let mut regs = Registers::default();
+    regs.x = 0x02;
+    regs.pc = 0x200;
+
+    let mut mem = Memory::new();
+    mem.write(0x201, 0x01);
+    mem.write(0x03, 0x22);
+    mem.write(0x04, 0x11);
+
+    assert_eq!(
+        fetch_operand(&regs, &mem, AddressMode::IndirectX),
+        Some(Opval::Address(0x1122))
+    );
+}
+
+#[test]
+fn test_fetch_operand_indirect_y() {
+    let mut regs = Registers::default();
+    regs.y = 0x01;
+    regs.pc = 0x200;
+
+    let mut mem = Memory::new();
+    mem.write(0x201, 0x01);
+    mem.write(0x01, 0x22);
+    mem.write(0x02, 0x11);
+
+    assert_eq!(
+        fetch_operand(&regs, &mem, AddressMode::IndirectY),
+        Some(Opval::Address(0x1123))
     );
 }
 
