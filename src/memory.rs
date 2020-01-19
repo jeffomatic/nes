@@ -1,5 +1,6 @@
 use super::math;
 
+#[derive(Clone)]
 pub struct Memory {
     ram: [u8; 1 << 11],
 }
