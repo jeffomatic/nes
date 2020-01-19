@@ -21,6 +21,7 @@ impl State {
 pub enum Update {
     Accumulator(u8),
     Status(Status, bool),
+    Memory(u16, u8),
 }
 
 impl Update {
@@ -28,6 +29,7 @@ impl Update {
         match self {
             Self::Accumulator(n) => state.regs.a = *n,
             Self::Status(s, on) => state.regs.p = s.set_into(state.regs.p, *on),
+            Self::Memory(addr, val) => state.mem.write(*addr, *val),
         }
     }
 }

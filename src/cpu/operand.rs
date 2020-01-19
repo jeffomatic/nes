@@ -5,20 +5,24 @@ use crate::memory::Memory;
 
 pub fn fetch_byte(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> u8 {
     match addr_mode {
+        AddressMode::Implicit => panic!(
+            "address mode {:?} has no fetch_byte implementation",
+            addr_mode
+        ),
         AddressMode::Accumulator => regs.a,
         AddressMode::Immediate => mem.read(regs.pc + 1),
 
         // TODO: zero page wraparound
-        AddressMode::ZeroPage => mem.read(mem.read(regs.pc + 1) as u16),
-        AddressMode::ZeroPageX => mem.read(mem.read(regs.pc + 1) as u16 + regs.x as u16),
-        AddressMode::ZeroPageY => mem.read(mem.read(regs.pc + 1) as u16 + regs.y as u16),
-
-        other => panic!("address mode {:?} has no fetch_byte implementation", other),
+        _ => mem.read(fetch_address(regs, mem, addr_mode)),
     }
 }
 
 pub fn fetch_address(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> u16 {
     match addr_mode {
+        AddressMode::ZeroPage => mem.read(regs.pc + 1) as u16,
+        AddressMode::ZeroPageX => mem.read(regs.pc + 1) as u16 + regs.x as u16,
+        AddressMode::ZeroPageY => mem.read(regs.pc + 1) as u16 + regs.y as u16,
+
         AddressMode::Relative => math::byte_addr_offset(regs.pc, mem.read(regs.pc + 1)),
         AddressMode::Absolute => mem.read16(regs.pc + 1),
         AddressMode::AbsoluteX => mem.read16(regs.pc + 1) + regs.x as u16,
