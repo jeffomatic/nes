@@ -3,7 +3,7 @@ use super::registers::Registers;
 use crate::math;
 use crate::memory::Memory;
 
-fn fetch_byte(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> u8 {
+pub fn fetch_byte(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> u8 {
     match addr_mode {
         AddressMode::Accumulator => regs.a,
         AddressMode::Immediate => mem.read(regs.pc + 1),
@@ -17,7 +17,7 @@ fn fetch_byte(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> u8 {
     }
 }
 
-fn fetch_address(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> u16 {
+pub fn fetch_address(regs: &Registers, mem: &Memory, addr_mode: AddressMode) -> u16 {
     match addr_mode {
         AddressMode::Relative => math::byte_addr_offset(regs.pc, mem.read(regs.pc + 1)),
         AddressMode::Absolute => mem.read16(regs.pc + 1),
