@@ -6,7 +6,6 @@ mod operand;
 mod registers;
 mod state;
 mod status;
-mod update;
 
 fn next(state: &mut state::State) {
     let (opcode, addr_mode) = opcode::decode(state.mem.read(state.regs.pc)).unwrap();
