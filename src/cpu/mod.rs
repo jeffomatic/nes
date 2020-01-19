@@ -27,7 +27,7 @@ fn decode(raw_opcode: u8) -> Option<(Opcode, AddressMode)> {
         0x16 => Some((Opcode::Asl, AddressMode::ZeroPageX)),
         0x18 => Some((Opcode::Clc, AddressMode::Implicit)),
         0x19 => Some((Opcode::Ora, AddressMode::AbsoluteY)),
-        0x19 => Some((Opcode::Ora, AddressMode::AbsoluteX)),
+        0x1D => Some((Opcode::Ora, AddressMode::AbsoluteX)),
         0x1E => Some((Opcode::Asl, AddressMode::AbsoluteX)),
         0x20 => Some((Opcode::Jsr, AddressMode::Absolute)),
         0x21 => Some((Opcode::And, AddressMode::IndirectX)),
