@@ -5,7 +5,7 @@ use crate::cpu::status::Status;
 use crate::math;
 
 fn update(state: &state::State, addr_mode: AddressMode) -> Vec<state::Update> {
-    let prev = operand::fetch_byte(&state.regs, &state.mem, addr_mode);
+    let prev = operand::fetch_byte(&state, addr_mode);
     let res = prev >> 1;
 
     let res_update = match addr_mode {
@@ -13,10 +13,9 @@ fn update(state: &state::State, addr_mode: AddressMode) -> Vec<state::Update> {
         AddressMode::ZeroPage
         | AddressMode::ZeroPageX
         | AddressMode::Absolute
-        | AddressMode::AbsoluteX => state::Update::Memory(
-            operand::fetch_address(&state.regs, &state.mem, addr_mode),
-            res,
-        ),
+        | AddressMode::AbsoluteX => {
+            state::Update::Memory(operand::fetch_address(&state, addr_mode), res)
+        }
         other => panic!("address mode {:?} not compatible with asl opcode", other),
     };
 

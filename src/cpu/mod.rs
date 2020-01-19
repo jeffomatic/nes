@@ -10,10 +10,7 @@ mod status;
 fn next(state: &mut state::State) {
     let (opcode, addr_mode) = opcode::decode(state.mem.read(state.regs.pc)).unwrap();
     let updates = match opcode {
-        Opcode::Adc => opcode::adc::update(
-            &state,
-            operand::fetch_byte(&state.regs, &state.mem, addr_mode),
-        ),
+        Opcode::Adc => opcode::adc::update(&state, operand::fetch_byte(&state, addr_mode)),
         _ => unimplemented!(),
         // Opcode::And => (),
         // Opcode::Asl => (),
