@@ -1,4 +1,5 @@
 use super::registers::Registers;
+use super::state::State;
 use super::status::Status;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -8,10 +9,10 @@ pub enum Update {
 }
 
 impl Update {
-    pub fn apply(&self, regs: &mut Registers) {
+    pub fn apply(&self, state: &mut State) {
         match self {
-            Self::Accumulator(n) => regs.a = *n,
-            Self::Status(s, on) => regs.p = s.set_into(regs.p, *on),
+            Self::Accumulator(n) => state.regs.a = *n,
+            Self::Status(s, on) => state.regs.p = s.set_into(state.regs.p, *on),
         }
     }
 }
@@ -67,8 +68,9 @@ fn test() {
     .iter()
     .enumerate()
     {
-        let mut got = c.current.clone();
-        c.update.apply(&mut got);
-        assert_eq!(got, c.want, "case {}", i);
+        let mut state = State::new();
+        state.regs = c.current.clone();
+        c.update.apply(&mut state);
+        assert_eq!(state.regs, c.want, "case {}", i);
     }
 }

@@ -17,7 +17,7 @@ pub enum AddressMode {
 }
 
 impl AddressMode {
-    pub fn op_bytes(&self) -> usize {
+    pub fn operand_offset(&self) -> u16 {
         match self {
             Self::Implicit => 0,
             Self::Accumulator => 0,

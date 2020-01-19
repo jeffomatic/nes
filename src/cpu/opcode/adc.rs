@@ -1,10 +1,10 @@
-use crate::cpu::registers::Registers;
+use crate::cpu::state::State;
 use crate::cpu::status::Status;
 use crate::cpu::update::Update;
 use crate::math;
 
-fn update(registers: &Registers, operand: u8) -> Vec<Update> {
-    let prev = registers.a;
+pub fn update(state: &State, operand: u8) -> Vec<Update> {
+    let prev = state.regs.a;
     let res = prev.wrapping_add(operand);
     let negative = math::is_negative(res);
     vec![
@@ -98,9 +98,9 @@ fn test() {
     .iter()
     .enumerate()
     {
-        let mut registers = Registers::default();
-        registers.a = c.a;
-        let got = update(&registers, c.operand);
+        let mut state = State::new();
+        state.regs.a = c.a;
+        let got = update(&state, c.operand);
         assert_eq!(got, c.want, "case {}", i);
     }
 }
