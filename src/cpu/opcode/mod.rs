@@ -5,6 +5,11 @@ mod adc;
 mod and;
 mod asl;
 mod bcc;
+mod bcs;
+mod beq;
+mod bmi;
+mod bne;
+mod bpl;
 mod lsr;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
