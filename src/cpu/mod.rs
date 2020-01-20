@@ -1,6 +1,6 @@
 use self::opcode::Opcode;
 
-mod address_mode;
+mod decode;
 mod opcode;
 mod operand;
 mod registers;
@@ -8,10 +8,7 @@ mod state;
 mod status;
 
 fn next(state: &mut state::State) {
-    let op = state.consume_instruction_byte();
-    let (opcode, addr_mode) = opcode::decode(op).unwrap();
-    let operand = operand::Operand::decode(state, addr_mode);
-
+    let (opcode, operand) = decode::decode(state).unwrap();
     match opcode {
         Opcode::Adc => opcode::adc::execute(state, operand),
         Opcode::And => opcode::and::execute(state, operand),
