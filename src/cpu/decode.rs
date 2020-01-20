@@ -191,10 +191,10 @@ fn decode_operand(state: &mut State, addr_mode: AddressMode) -> Operand {
         AddressMode::Immediate => Operand::Immediate(state.consume_instruction_byte()),
         AddressMode::ZeroPage => Operand::Memory(state.consume_instruction_byte() as u16),
         AddressMode::ZeroPageX => {
-            Operand::Memory(state.consume_instruction_byte() as u16 + state.regs.x as u16)
+            Operand::Memory(state.regs.x.wrapping_add(state.consume_instruction_byte()) as u16)
         }
         AddressMode::ZeroPageY => {
-            Operand::Memory(state.consume_instruction_byte() as u16 + state.regs.y as u16)
+            Operand::Memory(state.regs.y.wrapping_add(state.consume_instruction_byte()) as u16)
         }
         AddressMode::Relative => Operand::Immediate(state.consume_instruction_byte()),
         AddressMode::Absolute => Operand::Memory(math::bytes_to_u16_le([
@@ -221,8 +221,8 @@ fn decode_operand(state: &mut State, addr_mode: AddressMode) -> Operand {
             Operand::Memory(state.mem.read16(math::bytes_to_u16_le(bytes)))
         }
         AddressMode::IndirectX => {
-            let base = state.consume_instruction_byte() as u16;
-            Operand::Memory(state.mem.read16(base + state.regs.x as u16))
+            let offset = state.consume_instruction_byte();
+            Operand::Memory(state.mem.read16(state.regs.x.wrapping_add(offset) as u16))
         }
         AddressMode::IndirectY => {
             let base = state.consume_instruction_byte() as u16;
@@ -284,6 +284,16 @@ fn test_decode_zero_page_x() {
         Operand::Memory(0x11)
     );
     assert_eq!(state.regs.pc, 1);
+
+    // zero-page wrapping
+    let mut state = State::new();
+    state.regs.x = 2;
+    state.mem.write(0, 0xFF);
+    assert_eq!(
+        decode_operand(&mut state, AddressMode::ZeroPageX),
+        Operand::Memory(0x01)
+    );
+    assert_eq!(state.regs.pc, 1);
 }
 
 #[test]
@@ -294,6 +304,16 @@ fn test_decode_zero_page_y() {
     assert_eq!(
         decode_operand(&mut state, AddressMode::ZeroPageY),
         Operand::Memory(0x11)
+    );
+    assert_eq!(state.regs.pc, 1);
+
+    // zero-page wrapping
+    let mut state = State::new();
+    state.regs.y = 2;
+    state.mem.write(0, 0xFF);
+    assert_eq!(
+        decode_operand(&mut state, AddressMode::ZeroPageY),
+        Operand::Memory(0x01)
     );
     assert_eq!(state.regs.pc, 1);
 }
@@ -331,6 +351,7 @@ fn test_decode_absolute_x() {
         decode_operand(&mut state, AddressMode::AbsoluteX),
         Operand::Memory(0xABCE)
     );
+    assert_eq!(state.regs.pc, 2);
 }
 
 #[test]
@@ -343,6 +364,7 @@ fn test_decode_absolute_y() {
         decode_operand(&mut state, AddressMode::AbsoluteY),
         Operand::Memory(0xABCE)
     );
+    assert_eq!(state.regs.pc, 2);
 }
 
 #[test]
@@ -357,6 +379,7 @@ fn test_decode_indirect() {
         decode_operand(&mut state, AddressMode::Indirect),
         Operand::Memory(0xABCD)
     );
+    assert_eq!(state.regs.pc, 2);
 }
 
 #[test]
@@ -370,6 +393,19 @@ fn test_decode_indirect_x() {
         decode_operand(&mut state, AddressMode::IndirectX),
         Operand::Memory(0xABCD)
     );
+    assert_eq!(state.regs.pc, 1);
+
+    // zero-page wrapping
+    let mut state = State::new();
+    state.regs.x = 2;
+    state.mem.write(0, 0xFF);
+    state.mem.write(1, 0xCD);
+    state.mem.write(2, 0xAB);
+    assert_eq!(
+        decode_operand(&mut state, AddressMode::IndirectX),
+        Operand::Memory(0xABCD)
+    );
+    assert_eq!(state.regs.pc, 1);
 }
 
 #[test]
@@ -383,4 +419,5 @@ fn test_decode_indirect_y() {
         decode_operand(&mut state, AddressMode::IndirectY),
         Operand::Memory(0xABCE)
     );
+    assert_eq!(state.regs.pc, 1);
 }
