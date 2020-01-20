@@ -1,7 +1,10 @@
-pub mod adc;
-pub mod and;
-pub mod asl;
-pub mod lsr;
+use crate::cpu::operand::Operand;
+use crate::cpu::state::State;
+
+mod adc;
+mod and;
+mod asl;
+mod lsr;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
 #[derive(Clone, Copy, Debug)]
@@ -62,4 +65,16 @@ pub enum Opcode {
     Txa, // Transfer stack pointer to accumulator
     Txs, // Transfer X to stack pointer
     Tya, // Transfer Y to accumulator
+}
+
+impl Opcode {
+    pub fn execute(&self, state: &mut State, operand: Operand) {
+        match self {
+            Opcode::Adc => adc::execute(state, operand),
+            Opcode::And => and::execute(state, operand),
+            Opcode::Asl => asl::execute(state, operand),
+            Opcode::Lsr => lsr::execute(state, operand),
+            other => panic!("execute for opcode {:?} not implemented", other),
+        }
+    }
 }

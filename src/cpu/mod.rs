@@ -1,5 +1,3 @@
-use self::opcode::Opcode;
-
 mod decode;
 mod opcode;
 mod operand;
@@ -9,65 +7,7 @@ mod status;
 
 fn next(state: &mut state::State) {
     let (opcode, operand) = decode::decode(state).unwrap();
-    match opcode {
-        Opcode::Adc => opcode::adc::execute(state, operand),
-        Opcode::And => opcode::and::execute(state, operand),
-        Opcode::Asl => opcode::asl::execute(state, operand),
-        Opcode::Lsr => opcode::lsr::execute(state, operand),
-        _ => unimplemented!(),
-        // Opcode::Bcc => (),
-        // Opcode::Bcs => (),
-        // Opcode::Beq => (),
-        // Opcode::Bit => (),
-        // Opcode::Bmi => (),
-        // Opcode::Bne => (),
-        // Opcode::Bpl => (),
-        // Opcode::Brk => (),
-        // Opcode::Bvc => (),
-        // Opcode::Bvs => (),
-        // Opcode::Clc => (),
-        // Opcode::Cld => (),
-        // Opcode::Cli => (),
-        // Opcode::Clv => (),
-        // Opcode::Cmp => (),
-        // Opcode::Cpx => (),
-        // Opcode::Cpy => (),
-        // Opcode::Dec => (),
-        // Opcode::Dex => (),
-        // Opcode::Dey => (),
-        // Opcode::Eor => (),
-        // Opcode::Inc => (),
-        // Opcode::Inx => (),
-        // Opcode::Iny => (),
-        // Opcode::Jmp => (),
-        // Opcode::Jsr => (),
-        // Opcode::Lda => (),
-        // Opcode::Ldx => (),
-        // Opcode::Ldy => (),
-        // Opcode::Nop => (),
-        // Opcode::Ora => (),
-        // Opcode::Pha => (),
-        // Opcode::Php => (),
-        // Opcode::Pla => (),
-        // Opcode::Plp => (),
-        // Opcode::Rol => (),
-        // Opcode::Ror => (),
-        // Opcode::Rti => (),
-        // Opcode::Rts => (),
-        // Opcode::Sbc => (),
-        // Opcode::Sec => (),
-        // Opcode::Sed => (),
-        // Opcode::Sei => (),
-        // Opcode::Sta => (),
-        // Opcode::Stx => (),
-        // Opcode::Sty => (),
-        // Opcode::Tax => (),
-        // Opcode::Tay => (),
-        // Opcode::Tsx => (),
-        // Opcode::Txa => (),
-        // Opcode::Txs => (),
-        // Opcode::Tya => (),
-    };
+    opcode.execute(state, operand);
 }
 
 #[test]
