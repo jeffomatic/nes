@@ -8,12 +8,16 @@ mod state;
 mod status;
 
 fn next(state: &mut state::State) {
-    let (opcode, addr_mode) = opcode::decode(state.mem.read(state.regs.pc)).unwrap();
-    let updates = match opcode {
-        Opcode::Adc => opcode::adc::update(&state, operand::fetch_byte(&state, addr_mode)),
+    let op = state.consume_instruction_byte();
+    let (opcode, addr_mode) = opcode::decode(op).unwrap();
+    let operand = operand::Operand::decode(state, addr_mode);
+
+    match opcode {
+        Opcode::Adc => opcode::adc::execute(state, operand),
+        Opcode::And => opcode::and::execute(state, operand),
+        Opcode::Asl => opcode::asl::execute(state, operand),
+        Opcode::Lsr => opcode::lsr::execute(state, operand),
         _ => unimplemented!(),
-        // Opcode::And => (),
-        // Opcode::Asl => (),
         // Opcode::Bcc => (),
         // Opcode::Bcs => (),
         // Opcode::Beq => (),
@@ -43,7 +47,6 @@ fn next(state: &mut state::State) {
         // Opcode::Lda => (),
         // Opcode::Ldx => (),
         // Opcode::Ldy => (),
-        // Opcode::Lsr => (),
         // Opcode::Nop => (),
         // Opcode::Ora => (),
         // Opcode::Pha => (),
@@ -68,12 +71,6 @@ fn next(state: &mut state::State) {
         // Opcode::Txs => (),
         // Opcode::Tya => (),
     };
-
-    for u in updates {
-        u.apply(state);
-    }
-
-    state.regs.pc += 1 + addr_mode.operand_offset();
 }
 
 #[test]

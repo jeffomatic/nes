@@ -35,4 +35,11 @@ impl Status {
             bitfield & !self.mask()
         }
     }
+
+    pub fn with_zero_negative(bitfield: u8, val: u8) -> u8 {
+        Status::Negative.set_into(
+            Status::Zero.set_into(bitfield, val == 0),
+            val & 0b1000_0000 != 0,
+        )
+    }
 }

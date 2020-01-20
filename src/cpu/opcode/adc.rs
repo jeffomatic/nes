@@ -1,105 +1,51 @@
-use crate::cpu::state::{self, State};
+use crate::cpu::operand::Operand;
+use crate::cpu::state::State;
 use crate::cpu::status::Status;
 use crate::math;
 
-pub fn update(state: &State, operand: u8) -> Vec<state::Update> {
+pub fn execute(state: &mut State, operand: Operand) {
     let prev = state.regs.a;
-    let res = prev.wrapping_add(operand);
+    let opval = operand.read(state);
+    let res = prev.wrapping_add(opval);
     let negative = math::is_negative(res);
-    vec![
-        state::Update::Accumulator(res),
-        state::Update::Status(Status::Carry, res < prev),
-        state::Update::Status(Status::Zero, res == 0),
-        state::Update::Status(
-            Status::Overflow,
-            !math::is_negative(prev) && !math::is_negative(operand) && negative,
-        ),
-        state::Update::Status(Status::Negative, negative),
-    ]
+    state.regs.a = res;
+    state.regs.p = Status::with_zero_negative(state.regs.p, res);
+    state.regs.p = Status::Carry.set_into(state.regs.p, res < prev);
+    state.regs.p = Status::Overflow.set_into(
+        state.regs.p,
+        !math::is_negative(prev) && !math::is_negative(opval) && negative,
+    );
 }
 
 #[test]
 fn test() {
-    struct Case {
-        operand: u8,
-        a: u8,
-        want: Vec<state::Update>,
-    }
+    let mut state = State::new();
+    execute(&mut state, Operand::Immediate(0));
+    assert_eq!(state.regs.a, 0);
+    assert_eq!(state.regs.p, Status::Zero.mask());
 
-    for (i, c) in [
-        Case {
-            operand: 0,
-            a: 0,
-            want: vec![
-                state::Update::Accumulator(0),
-                state::Update::Status(Status::Carry, false),
-                state::Update::Status(Status::Zero, true),
-                state::Update::Status(Status::Overflow, false),
-                state::Update::Status(Status::Negative, false),
-            ],
-        },
-        Case {
-            operand: 0,
-            a: 1,
-            want: vec![
-                state::Update::Accumulator(1),
-                state::Update::Status(Status::Carry, false),
-                state::Update::Status(Status::Zero, false),
-                state::Update::Status(Status::Overflow, false),
-                state::Update::Status(Status::Negative, false),
-            ],
-        },
-        Case {
-            operand: 1,
-            a: 0,
-            want: vec![
-                state::Update::Accumulator(1),
-                state::Update::Status(Status::Carry, false),
-                state::Update::Status(Status::Zero, false),
-                state::Update::Status(Status::Overflow, false),
-                state::Update::Status(Status::Negative, false),
-            ],
-        },
-        Case {
-            operand: 0,
-            a: 0xFF,
-            want: vec![
-                state::Update::Accumulator(0xFF),
-                state::Update::Status(Status::Carry, false),
-                state::Update::Status(Status::Zero, false),
-                state::Update::Status(Status::Overflow, false),
-                state::Update::Status(Status::Negative, true),
-            ],
-        },
-        Case {
-            operand: 1,
-            a: 0xFF,
-            want: vec![
-                state::Update::Accumulator(0),
-                state::Update::Status(Status::Carry, true),
-                state::Update::Status(Status::Zero, true),
-                state::Update::Status(Status::Overflow, false),
-                state::Update::Status(Status::Negative, false),
-            ],
-        },
-        Case {
-            operand: 0x7F,
-            a: 0x7F,
-            want: vec![
-                state::Update::Accumulator(0xFE),
-                state::Update::Status(Status::Carry, false),
-                state::Update::Status(Status::Zero, false),
-                state::Update::Status(Status::Overflow, true),
-                state::Update::Status(Status::Negative, true),
-            ],
-        },
-    ]
-    .iter()
-    .enumerate()
-    {
-        let mut state = State::new();
-        state.regs.a = c.a;
-        let got = update(&state, c.operand);
-        assert_eq!(got, c.want, "case {}", i);
-    }
+    let mut state = State::new();
+    execute(&mut state, Operand::Immediate(1));
+    assert_eq!(state.regs.a, 1);
+    assert_eq!(state.regs.p, 0);
+
+    let mut state = State::new();
+    execute(&mut state, Operand::Immediate(0xFF));
+    assert_eq!(state.regs.a, 0xFF);
+    assert_eq!(state.regs.p, Status::Negative.mask());
+
+    let mut state = State::new();
+    state.regs.a = 0xFF;
+    execute(&mut state, Operand::Immediate(1));
+    assert_eq!(state.regs.a, 0);
+    assert_eq!(state.regs.p, Status::Carry.mask() | Status::Zero.mask());
+
+    let mut state = State::new();
+    state.regs.a = 0x7F;
+    execute(&mut state, Operand::Immediate(0x7F));
+    assert_eq!(state.regs.a, 0xFE);
+    assert_eq!(
+        state.regs.p,
+        Status::Overflow.mask() | Status::Negative.mask()
+    );
 }
