@@ -24,10 +24,12 @@ mod cpy;
 mod dec;
 mod dex;
 mod dey;
+mod eor;
 mod inc;
 mod inx;
 mod iny;
 mod lsr;
+mod ora;
 mod sec;
 mod sed;
 mod sei;
@@ -119,7 +121,7 @@ impl Opcode {
             Opcode::Dec => dec::execute(state, operand),
             Opcode::Dex => dex::execute(state, operand),
             Opcode::Dey => dey::execute(state, operand),
-            // Opcode::Eor => eor::execute(state, operand),
+            Opcode::Eor => eor::execute(state, operand),
             Opcode::Inc => inc::execute(state, operand),
             Opcode::Inx => inx::execute(state, operand),
             Opcode::Iny => iny::execute(state, operand),
@@ -130,7 +132,7 @@ impl Opcode {
             // Opcode::Ldy => ldy::execute(state, operand),
             Opcode::Lsr => lsr::execute(state, operand),
             // Opcode::Nop => nop::execute(state, operand),
-            // Opcode::Ora => ora::execute(state, operand),
+            Opcode::Ora => ora::execute(state, operand),
             // Opcode::Pha => pha::execute(state, operand),
             // Opcode::Php => php::execute(state, operand),
             // Opcode::Pla => pla::execute(state, operand),
