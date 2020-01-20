@@ -19,6 +19,8 @@ mod cld;
 mod cli;
 mod clv;
 mod cmp;
+mod cpx;
+mod cpy;
 mod lsr;
 mod sec;
 mod sed;
@@ -106,8 +108,8 @@ impl Opcode {
             Opcode::Cli => cli::execute(state, operand),
             Opcode::Clv => clv::execute(state, operand),
             Opcode::Cmp => cmp::execute(state, operand),
-            // Opcode::Cpx => cpx::execute(state, operand),
-            // Opcode::Cpy => cpy::execute(state, operand),
+            Opcode::Cpx => cpx::execute(state, operand),
+            Opcode::Cpy => cpy::execute(state, operand),
             // Opcode::Dec => dec::execute(state, operand),
             // Opcode::Dex => dex::execute(state, operand),
             // Opcode::Dey => dey::execute(state, operand),
