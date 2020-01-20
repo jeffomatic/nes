@@ -12,6 +12,8 @@ mod bmi;
 mod bne;
 mod bpl;
 mod brk;
+mod bvc;
+mod bvs;
 mod lsr;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
@@ -89,8 +91,8 @@ impl Opcode {
             Opcode::Bne => bne::execute(state, operand),
             Opcode::Bpl => bpl::execute(state, operand),
             Opcode::Brk => brk::execute(state, operand),
-            // Opcode::Bvc => bvc::execute(state, operand),
-            // Opcode::Bvs => bvs::execute(state, operand),
+            Opcode::Bvc => bvc::execute(state, operand),
+            Opcode::Bvs => bvs::execute(state, operand),
             // Opcode::Clc => clc::execute(state, operand),
             // Opcode::Cld => cld::execute(state, operand),
             // Opcode::Cli => cli::execute(state, operand),
