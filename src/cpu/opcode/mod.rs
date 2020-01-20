@@ -14,7 +14,14 @@ mod bpl;
 mod brk;
 mod bvc;
 mod bvs;
+mod clc;
+mod cld;
+mod cli;
+mod clv;
 mod lsr;
+mod sec;
+mod sed;
+mod sei;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
 #[derive(Clone, Copy, Debug)]
@@ -93,10 +100,10 @@ impl Opcode {
             Opcode::Brk => brk::execute(state, operand),
             Opcode::Bvc => bvc::execute(state, operand),
             Opcode::Bvs => bvs::execute(state, operand),
-            // Opcode::Clc => clc::execute(state, operand),
-            // Opcode::Cld => cld::execute(state, operand),
-            // Opcode::Cli => cli::execute(state, operand),
-            // Opcode::Clv => clv::execute(state, operand),
+            Opcode::Clc => clc::execute(state, operand),
+            Opcode::Cld => cld::execute(state, operand),
+            Opcode::Cli => cli::execute(state, operand),
+            Opcode::Clv => clv::execute(state, operand),
             // Opcode::Cmp => cmp::execute(state, operand),
             // Opcode::Cpx => cpx::execute(state, operand),
             // Opcode::Cpy => cpy::execute(state, operand),
@@ -124,9 +131,9 @@ impl Opcode {
             // Opcode::Rti => rti::execute(state, operand),
             // Opcode::Rts => rts::execute(state, operand),
             // Opcode::Sbc => sbc::execute(state, operand),
-            // Opcode::Sec => sec::execute(state, operand),
-            // Opcode::Sed => sed::execute(state, operand),
-            // Opcode::Sei => sei::execute(state, operand),
+            Opcode::Sec => sec::execute(state, operand),
+            Opcode::Sed => sed::execute(state, operand),
+            Opcode::Sei => sei::execute(state, operand),
             // Opcode::Sta => sta::execute(state, operand),
             // Opcode::Stx => stx::execute(state, operand),
             // Opcode::Sty => sty::execute(state, operand),
