@@ -28,6 +28,7 @@ mod eor;
 mod inc;
 mod inx;
 mod iny;
+mod jmp;
 mod lsr;
 mod ora;
 mod sec;
@@ -125,7 +126,7 @@ impl Opcode {
             Opcode::Inc => inc::execute(state, operand),
             Opcode::Inx => inx::execute(state, operand),
             Opcode::Iny => iny::execute(state, operand),
-            // Opcode::Jmp => jmp::execute(state, operand),
+            Opcode::Jmp => jmp::execute(state, operand),
             // Opcode::Jsr => jsr::execute(state, operand),
             // Opcode::Lda => lda::execute(state, operand),
             // Opcode::Ldx => ldx::execute(state, operand),

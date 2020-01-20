@@ -25,6 +25,13 @@ impl Operand {
             other => panic!("no writable value for {:?} operand", other),
         }
     }
+
+    pub fn address(&self) -> u16 {
+        match self {
+            Self::Memory(addr) => *addr,
+            other => panic!("no address for {:?} operand", other),
+        }
+    }
 }
 
 #[test]
