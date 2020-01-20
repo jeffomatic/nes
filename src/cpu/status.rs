@@ -42,4 +42,8 @@ impl Status {
             val & 0b1000_0000 != 0,
         )
     }
+
+    pub fn check(&self, bitfield: u8) -> bool {
+        bitfield & self.mask() != 0
+    }
 }

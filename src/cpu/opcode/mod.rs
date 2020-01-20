@@ -4,6 +4,7 @@ use crate::cpu::state::State;
 mod adc;
 mod and;
 mod asl;
+mod bcc;
 mod lsr;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
