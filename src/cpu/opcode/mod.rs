@@ -7,6 +7,7 @@ mod asl;
 mod bcc;
 mod bcs;
 mod beq;
+mod bit;
 mod bmi;
 mod bne;
 mod bpl;
