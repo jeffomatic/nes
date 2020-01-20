@@ -21,6 +21,12 @@ mod clv;
 mod cmp;
 mod cpx;
 mod cpy;
+mod dec;
+mod dex;
+mod dey;
+mod inc;
+mod inx;
+mod iny;
 mod lsr;
 mod sec;
 mod sed;
@@ -110,13 +116,13 @@ impl Opcode {
             Opcode::Cmp => cmp::execute(state, operand),
             Opcode::Cpx => cpx::execute(state, operand),
             Opcode::Cpy => cpy::execute(state, operand),
-            // Opcode::Dec => dec::execute(state, operand),
-            // Opcode::Dex => dex::execute(state, operand),
-            // Opcode::Dey => dey::execute(state, operand),
+            Opcode::Dec => dec::execute(state, operand),
+            Opcode::Dex => dex::execute(state, operand),
+            Opcode::Dey => dey::execute(state, operand),
             // Opcode::Eor => eor::execute(state, operand),
-            // Opcode::Inc => inc::execute(state, operand),
-            // Opcode::Inx => inx::execute(state, operand),
-            // Opcode::Iny => iny::execute(state, operand),
+            Opcode::Inc => inc::execute(state, operand),
+            Opcode::Inx => inx::execute(state, operand),
+            Opcode::Iny => iny::execute(state, operand),
             // Opcode::Jmp => jmp::execute(state, operand),
             // Opcode::Jsr => jsr::execute(state, operand),
             // Opcode::Lda => lda::execute(state, operand),
