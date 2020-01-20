@@ -13,7 +13,7 @@ impl Operand {
         match self {
             Self::Accumulator => state.regs.a,
             Self::Immediate(val) => *val,
-            Self::Memory(addr) => state.mem.read(*addr),
+            Self::Memory(addr) => state.memread(*addr),
             other => panic!("no readable value for {:?} operand", other),
         }
     }
@@ -21,7 +21,7 @@ impl Operand {
     pub fn write(&self, state: &mut State, val: u8) {
         match self {
             Self::Accumulator => state.regs.a = val,
-            Self::Memory(addr) => state.mem.write(*addr, val),
+            Self::Memory(addr) => state.memwrite(*addr, val),
             other => panic!("no writable value for {:?} operand", other),
         }
     }
@@ -48,11 +48,11 @@ fn test_operand_immediate() {
 #[test]
 fn test_operand_memory() {
     let mut state = State::new();
-    state.mem.write(0x1F, 0xAB);
+    state.memwrite(0x1F, 0xAB);
 
     let op = Operand::Memory(0x1F);
     assert_eq!(op.read(&state), 0xAB);
 
     op.write(&mut state, 0xCD);
-    assert_eq!(state.mem.read(0x1F), 0xCD);
+    assert_eq!(state.memread(0x1F), 0xCD);
 }

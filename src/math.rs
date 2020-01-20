@@ -26,3 +26,7 @@ pub fn test_byte_addr_offset() {
 pub fn is_negative(x: u8) -> bool {
     x & 0b1000_0000 != 0
 }
+
+pub fn u16_to_bytes_le(x: u16) -> [u8; 2] {
+    [x as u8, (x >> 8) as u8]
+}

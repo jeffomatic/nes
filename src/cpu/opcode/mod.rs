@@ -11,6 +11,7 @@ mod bit;
 mod bmi;
 mod bne;
 mod bpl;
+mod brk;
 mod lsr;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
