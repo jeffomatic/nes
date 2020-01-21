@@ -35,6 +35,10 @@ mod ldx;
 mod ldy;
 mod lsr;
 mod ora;
+mod pha;
+mod php;
+mod pla;
+mod plp;
 mod rts;
 mod sec;
 mod sed;
@@ -142,10 +146,10 @@ impl Opcode {
             Opcode::Lsr => lsr::execute(state, operand),
             Opcode::Nop => (),
             Opcode::Ora => ora::execute(state, operand),
-            // Opcode::Pha => pha::execute(state, operand),
-            // Opcode::Php => php::execute(state, operand),
-            // Opcode::Pla => pla::execute(state, operand),
-            // Opcode::Plp => plp::execute(state, operand),
+            Opcode::Pha => pha::execute(state, operand),
+            Opcode::Php => php::execute(state, operand),
+            Opcode::Pla => pla::execute(state, operand),
+            Opcode::Plp => plp::execute(state, operand),
             // Opcode::Rol => rol::execute(state, operand),
             // Opcode::Ror => ror::execute(state, operand),
             // Opcode::Rti => rti::execute(state, operand),
