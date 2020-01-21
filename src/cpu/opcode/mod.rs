@@ -50,6 +50,12 @@ mod sei;
 mod sta;
 mod stx;
 mod sty;
+mod tax;
+mod tay;
+mod tsx;
+mod txa;
+mod txs;
+mod tya;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
 #[derive(Clone, Copy, Debug)]
@@ -165,13 +171,12 @@ impl Opcode {
             Opcode::Sta => sta::execute(state, operand),
             Opcode::Stx => stx::execute(state, operand),
             Opcode::Sty => sty::execute(state, operand),
-            // Opcode::Tax => tax::execute(state, operand),
-            // Opcode::Tay => tay::execute(state, operand),
-            // Opcode::Tsx => tsx::execute(state, operand),
-            // Opcode::Txa => txa::execute(state, operand),
-            // Opcode::Txs => txs::execute(state, operand),
-            // Opcode::Tya => tya::execute(state, operand),
-            other => panic!("execute for opcode {:?} not implemented", other),
+            Opcode::Tax => tax::execute(state, operand),
+            Opcode::Tay => tay::execute(state, operand),
+            Opcode::Tsx => tsx::execute(state, operand),
+            Opcode::Txa => txa::execute(state, operand),
+            Opcode::Txs => txs::execute(state, operand),
+            Opcode::Tya => tya::execute(state, operand),
         }
     }
 }
