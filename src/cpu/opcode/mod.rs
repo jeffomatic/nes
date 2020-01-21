@@ -41,6 +41,7 @@ mod pla;
 mod plp;
 mod rol;
 mod ror;
+mod rti;
 mod rts;
 mod sec;
 mod sed;
@@ -154,7 +155,7 @@ impl Opcode {
             Opcode::Plp => plp::execute(state, operand),
             Opcode::Rol => rol::execute(state, operand),
             Opcode::Ror => ror::execute(state, operand),
-            // Opcode::Rti => rti::execute(state, operand),
+            Opcode::Rti => rti::execute(state, operand),
             Opcode::Rts => rts::execute(state, operand),
             // Opcode::Sbc => sbc::execute(state, operand),
             Opcode::Sec => sec::execute(state, operand),
