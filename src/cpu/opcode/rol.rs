@@ -4,7 +4,12 @@ use crate::cpu::status::Status;
 
 pub fn execute(state: &mut State, operand: Operand) {
     let prev = operand.read(state);
-    let res = prev << 1;
+    let res = (prev << 1)
+        | if Status::Carry.check(state.regs.p) {
+            1
+        } else {
+            0
+        };
     operand.write(state, res);
     state.regs.p = Status::with_zero_negative(state.regs.p, res);
     state.regs.p = Status::Carry.set_into(state.regs.p, prev & 0b1000_0000 != 0);
@@ -41,11 +46,11 @@ fn test() {
     assert_eq!(state.memread(0x10), 0b10);
     assert_eq!(state.regs.p, 0);
 
-    // ensure carry is not transferred
+    // ensure carry is transferred
     let mut state = State::new();
     state.regs.a = 0b0000_0001;
     state.regs.p = Status::Carry.mask();
     execute(&mut state, Operand::Accumulator);
-    assert_eq!(state.regs.a, 0b10);
+    assert_eq!(state.regs.a, 0b11);
     assert_eq!(state.regs.p, 0);
 }
