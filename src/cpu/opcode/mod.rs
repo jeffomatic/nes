@@ -30,12 +30,18 @@ mod inx;
 mod iny;
 mod jmp;
 mod jsr;
+mod lda;
+mod ldx;
+mod ldy;
 mod lsr;
 mod ora;
 mod rts;
 mod sec;
 mod sed;
 mod sei;
+mod sta;
+mod stx;
+mod sty;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
 #[derive(Clone, Copy, Debug)]
@@ -130,9 +136,9 @@ impl Opcode {
             Opcode::Iny => iny::execute(state, operand),
             Opcode::Jmp => jmp::execute(state, operand),
             Opcode::Jsr => jsr::execute(state, operand),
-            // Opcode::Lda => lda::execute(state, operand),
-            // Opcode::Ldx => ldx::execute(state, operand),
-            // Opcode::Ldy => ldy::execute(state, operand),
+            Opcode::Lda => lda::execute(state, operand),
+            Opcode::Ldx => ldx::execute(state, operand),
+            Opcode::Ldy => ldy::execute(state, operand),
             Opcode::Lsr => lsr::execute(state, operand),
             // Opcode::Nop => nop::execute(state, operand),
             Opcode::Ora => ora::execute(state, operand),
@@ -148,9 +154,9 @@ impl Opcode {
             Opcode::Sec => sec::execute(state, operand),
             Opcode::Sed => sed::execute(state, operand),
             Opcode::Sei => sei::execute(state, operand),
-            // Opcode::Sta => sta::execute(state, operand),
-            // Opcode::Stx => stx::execute(state, operand),
-            // Opcode::Sty => sty::execute(state, operand),
+            Opcode::Sta => sta::execute(state, operand),
+            Opcode::Stx => stx::execute(state, operand),
+            Opcode::Sty => sty::execute(state, operand),
             // Opcode::Tax => tax::execute(state, operand),
             // Opcode::Tay => tay::execute(state, operand),
             // Opcode::Tsx => tsx::execute(state, operand),
