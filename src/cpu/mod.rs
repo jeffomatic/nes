@@ -34,6 +34,9 @@ fn test() {
 
     next(&mut state);
     assert_eq!(state.regs.pc, 6);
-    assert_eq!(state.regs.a, 0xFF);
-    assert_eq!(state.regs.p, status::Status::Negative.mask());
+    assert_eq!(state.regs.a, 0);
+    assert_eq!(
+        state.regs.p,
+        status::Status::Carry.mask() | status::Status::Zero.mask()
+    );
 }
