@@ -1,7 +1,6 @@
 mod decode;
 mod opcode;
 mod operand;
-mod registers;
 mod state;
 mod status;
 
