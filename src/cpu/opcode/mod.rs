@@ -140,7 +140,7 @@ impl Opcode {
             Opcode::Ldx => ldx::execute(state, operand),
             Opcode::Ldy => ldy::execute(state, operand),
             Opcode::Lsr => lsr::execute(state, operand),
-            // Opcode::Nop => nop::execute(state, operand),
+            Opcode::Nop => (),
             Opcode::Ora => ora::execute(state, operand),
             // Opcode::Pha => pha::execute(state, operand),
             // Opcode::Php => php::execute(state, operand),
