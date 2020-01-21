@@ -29,8 +29,10 @@ mod inc;
 mod inx;
 mod iny;
 mod jmp;
+mod jsr;
 mod lsr;
 mod ora;
+mod rts;
 mod sec;
 mod sed;
 mod sei;
@@ -127,7 +129,7 @@ impl Opcode {
             Opcode::Inx => inx::execute(state, operand),
             Opcode::Iny => iny::execute(state, operand),
             Opcode::Jmp => jmp::execute(state, operand),
-            // Opcode::Jsr => jsr::execute(state, operand),
+            Opcode::Jsr => jsr::execute(state, operand),
             // Opcode::Lda => lda::execute(state, operand),
             // Opcode::Ldx => ldx::execute(state, operand),
             // Opcode::Ldy => ldy::execute(state, operand),
@@ -141,7 +143,7 @@ impl Opcode {
             // Opcode::Rol => rol::execute(state, operand),
             // Opcode::Ror => ror::execute(state, operand),
             // Opcode::Rti => rti::execute(state, operand),
-            // Opcode::Rts => rts::execute(state, operand),
+            Opcode::Rts => rts::execute(state, operand),
             // Opcode::Sbc => sbc::execute(state, operand),
             Opcode::Sec => sec::execute(state, operand),
             Opcode::Sed => sed::execute(state, operand),

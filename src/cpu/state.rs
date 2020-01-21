@@ -134,6 +134,17 @@ impl State {
         self.stack_push(bytes[1]);
     }
 
+    pub fn stack_pop(&mut self) -> u8 {
+        self.regs.s += 1;
+        self.memread(STACK_BASE + self.regs.s as u16)
+    }
+
+    pub fn stack_pop16(&mut self) -> u16 {
+        let a = self.stack_pop();
+        let b = self.stack_pop();
+        math::bytes_to_u16_le([b, a])
+    }
+
     /// Returns the u8 value that would be returned during a stack pop. The
     /// offset will skip backward through pushed bytes. An offset of zero
     /// denotes the most recent byte pushed to the stack.
