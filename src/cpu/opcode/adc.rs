@@ -20,19 +20,15 @@ pub fn execute(state: &mut State, operand: Operand) {
     state.regs.p = Status::Carry.set_into(state.regs.p, res16 & 0x100 != 0);
     state.regs.p = Status::Overflow.set_into(
         state.regs.p,
-        (math::is_negative(prev) == math::is_negative(opval))
-            && (math::is_negative(prev) != math::is_negative(res)),
+        // Overflow occurs in the following cases:
+        // positive + positive = negative
+        // negative + negative = positive
+        math::same_sign(prev, opval) && !math::same_sign(prev, res),
     );
 }
 
 #[test]
 fn test() {
-    // sets zero mask
-    let mut state = State::new();
-    execute(&mut state, Operand::Immediate(0));
-    assert_eq!(state.regs.a, 0);
-    assert_eq!(state.regs.p, Status::Zero.mask());
-
     // no-mask operation
     let mut state = State::new();
     execute(&mut state, Operand::Immediate(1));
@@ -45,6 +41,12 @@ fn test() {
     execute(&mut state, Operand::Immediate(1));
     assert_eq!(state.regs.a, 2);
     assert_eq!(state.regs.p, 0);
+
+    // sets zero mask
+    let mut state = State::new();
+    execute(&mut state, Operand::Immediate(0));
+    assert_eq!(state.regs.a, 0);
+    assert_eq!(state.regs.p, Status::Zero.mask());
 
     // sets negative mask
     let mut state = State::new();

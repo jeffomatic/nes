@@ -43,6 +43,7 @@ mod rol;
 mod ror;
 mod rti;
 mod rts;
+mod sbc;
 mod sec;
 mod sed;
 mod sei;
@@ -157,7 +158,7 @@ impl Opcode {
             Opcode::Ror => ror::execute(state, operand),
             Opcode::Rti => rti::execute(state, operand),
             Opcode::Rts => rts::execute(state, operand),
-            // Opcode::Sbc => sbc::execute(state, operand),
+            Opcode::Sbc => sbc::execute(state, operand),
             Opcode::Sec => sec::execute(state, operand),
             Opcode::Sed => sed::execute(state, operand),
             Opcode::Sei => sei::execute(state, operand),
