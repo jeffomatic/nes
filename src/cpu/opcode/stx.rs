@@ -9,7 +9,7 @@ pub fn execute(state: &mut State, operand: Operand) {
 fn test() {
     let mut state = State::new();
     state.regs.x = 1;
-    state.memwrite(0x200, 0x69);
+    state.mem_write(0x200, 0x69);
     execute(&mut state, Operand::Memory(0x200));
-    assert_eq!(state.memread(0x200), 1);
+    assert_eq!(state.mem_read(0x200), 1);
 }

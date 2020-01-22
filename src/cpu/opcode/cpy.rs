@@ -15,35 +15,35 @@ fn test() {
     // Y < M, N = 0
     let mut state = State::new();
     state.regs.y = 3;
-    state.memwrite(0x10, 4);
+    state.mem_write(0x10, 4);
     execute(&mut state, Operand::Memory(0x10));
     assert_eq!(state.regs.p, Status::Negative.mask());
 
     // Y < M, N = 0
     let mut state = State::new();
     state.regs.y = 2;
-    state.memwrite(0x10, 0xFF);
+    state.mem_write(0x10, 0xFF);
     execute(&mut state, Operand::Memory(0x10));
     assert_eq!(state.regs.p, 0);
 
     // Y = M
     let mut state = State::new();
     state.regs.y = 3;
-    state.memwrite(0x10, 3);
+    state.mem_write(0x10, 3);
     execute(&mut state, Operand::Memory(0x10));
     assert_eq!(state.regs.p, Status::Carry.mask() | Status::Zero.mask());
 
     // Y > M, N = 0
     let mut state = State::new();
     state.regs.y = 2;
-    state.memwrite(0x10, 1);
+    state.mem_write(0x10, 1);
     execute(&mut state, Operand::Memory(0x10));
     assert_eq!(state.regs.p, Status::Carry.mask());
 
     // Y > M, N = 1
     let mut state = State::new();
     state.regs.y = 0xFF;
-    state.memwrite(0xFE, 1);
+    state.mem_write(0xFE, 1);
     execute(&mut state, Operand::Memory(0x10));
     assert_eq!(state.regs.p, Status::Carry.mask() | Status::Negative.mask());
 }

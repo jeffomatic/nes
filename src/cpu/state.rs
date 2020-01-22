@@ -103,7 +103,7 @@ impl State {
         }
     }
 
-    pub fn memread(&self, addr: u16) -> u8 {
+    pub fn mem_read(&self, addr: u16) -> u8 {
         match addr {
             0..=MAX_RAM_ADDR => self.ram[addr as usize],
             0xFFFA => math::u16_lo(self.vectors.nmi),
@@ -116,11 +116,11 @@ impl State {
         }
     }
 
-    pub fn memread16(&self, addr: u16) -> u16 {
-        math::bytes_to_u16_le([self.memread(addr), self.memread(addr + 1)])
+    pub fn mem_read16(&self, addr: u16) -> u16 {
+        math::bytes_to_u16_le([self.mem_read(addr), self.mem_read(addr + 1)])
     }
 
-    pub fn memwrite(&mut self, addr: u16, v: u8) {
+    pub fn mem_write(&mut self, addr: u16, v: u8) {
         match addr {
             0..=0x7FF => self.ram[addr as usize] = v,
             0xFFFA => self.vectors.nmi = math::u16_set_lo(self.vectors.nmi, v),
@@ -135,7 +135,7 @@ impl State {
 
     pub fn consume_instruction_byte(&mut self) -> u8 {
         self.regs.pc += 1;
-        self.memread(self.regs.pc - 1)
+        self.mem_read(self.regs.pc - 1)
     }
 
     pub fn stack_pointer(&self) -> u16 {
@@ -143,7 +143,7 @@ impl State {
     }
 
     pub fn stack_push(&mut self, v: u8) {
-        self.memwrite(self.stack_pointer(), v);
+        self.mem_write(self.stack_pointer(), v);
         self.regs.s -= 1;
     }
 
@@ -155,7 +155,7 @@ impl State {
 
     pub fn stack_pop(&mut self) -> u8 {
         self.regs.s += 1;
-        self.memread(STACK_BASE + self.regs.s as u16)
+        self.mem_read(STACK_BASE + self.regs.s as u16)
     }
 
     pub fn stack_pop16(&mut self) -> u16 {
@@ -168,9 +168,9 @@ impl State {
     /// offset will skip backward through pushed bytes. An offset of zero
     /// denotes the most recent byte pushed to the stack.
     pub fn stack_peek(&self, offset: u8) -> u8 {
-        // TODO: distinguish between read and load. memread() may be updated
+        // TODO: distinguish between read and load. mem_read() may be updated
         // to consume CPU cycles.
-        self.memread(STACK_BASE + (self.regs.s + offset + 1) as u16)
+        self.mem_read(STACK_BASE + (self.regs.s + offset + 1) as u16)
     }
 
     pub fn stack_peek16(&self, offset: u8) -> u16 {

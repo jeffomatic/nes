@@ -16,35 +16,35 @@ pub fn execute(state: &mut State, operand: Operand) {
 #[test]
 fn test() {
     let mut state = State::new();
-    state.memwrite(0, 0);
+    state.mem_write(0, 0);
     execute(&mut state, Operand::Memory(0));
     assert_eq!(state.regs.p, Status::Zero.mask());
 
     let mut state = State::new();
     state.regs.a = 0xFF;
-    state.memwrite(0, 1);
+    state.mem_write(0, 1);
     execute(&mut state, Operand::Memory(0));
     assert_eq!(state.regs.p, 0);
 
     let mut state = State::new();
-    state.memwrite(0, 0b0100_0000);
+    state.mem_write(0, 0b0100_0000);
     execute(&mut state, Operand::Memory(0));
     assert_eq!(state.regs.p, Status::Zero.mask() | Status::Overflow.mask());
 
     let mut state = State::new();
     state.regs.a = 0xFF;
-    state.memwrite(0, 0b0100_0000);
+    state.mem_write(0, 0b0100_0000);
     execute(&mut state, Operand::Memory(0));
     assert_eq!(state.regs.p, Status::Overflow.mask());
 
     let mut state = State::new();
-    state.memwrite(0, 0b1000_0000);
+    state.mem_write(0, 0b1000_0000);
     execute(&mut state, Operand::Memory(0));
     assert_eq!(state.regs.p, Status::Zero.mask() | Status::Negative.mask());
 
     let mut state = State::new();
     state.regs.a = 0xFF;
-    state.memwrite(0, 0b1000_0000);
+    state.mem_write(0, 0b1000_0000);
     execute(&mut state, Operand::Memory(0));
     assert_eq!(state.regs.p, Status::Negative.mask());
 }

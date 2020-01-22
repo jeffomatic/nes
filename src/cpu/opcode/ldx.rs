@@ -12,21 +12,21 @@ pub fn execute(state: &mut State, operand: Operand) {
 fn test() {
     let mut state = State::new();
     state.regs.x = 0x69;
-    state.memwrite(0x200, 1);
+    state.mem_write(0x200, 1);
     execute(&mut state, Operand::Memory(0x200));
     assert_eq!(state.regs.x, 1);
     assert_eq!(state.regs.p, 0);
 
     let mut state = State::new();
     state.regs.x = 0x69;
-    state.memwrite(0x200, 0xFF);
+    state.mem_write(0x200, 0xFF);
     execute(&mut state, Operand::Memory(0x200));
     assert_eq!(state.regs.x, 0xFF);
     assert_eq!(state.regs.p, Status::Negative.mask());
 
     let mut state = State::new();
     state.regs.x = 0x69;
-    state.memwrite(0x200, 0);
+    state.mem_write(0x200, 0);
     execute(&mut state, Operand::Memory(0x200));
     assert_eq!(state.regs.x, 0);
     assert_eq!(state.regs.p, Status::Zero.mask());

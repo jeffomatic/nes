@@ -38,9 +38,9 @@ fn test() {
     assert_eq!(state.regs.p, Status::Carry.mask() | Status::Negative.mask());
 
     let mut state = State::new();
-    state.memwrite(0x10, 1);
+    state.mem_write(0x10, 1);
     execute(&mut state, Operand::Memory(0x10));
-    assert_eq!(state.memread(0x10), 0b10);
+    assert_eq!(state.mem_read(0x10), 0b10);
     assert_eq!(state.regs.p, 0);
 
     // ensure carry is not transferred

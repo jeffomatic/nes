@@ -12,12 +12,12 @@ fn next(state: &mut state::State) {
 #[test]
 fn test() {
     let mut state = state::State::new();
-    state.memwrite(0, 0x69); // adc #$01
-    state.memwrite(1, 0x01);
-    state.memwrite(2, 0x69); // adc #$FF
-    state.memwrite(3, 0xFF);
-    state.memwrite(4, 0x69); // adc #$FF
-    state.memwrite(5, 0xFF);
+    state.mem_write(0, 0x69); // adc #$01
+    state.mem_write(1, 0x01);
+    state.mem_write(2, 0x69); // adc #$FF
+    state.mem_write(3, 0xFF);
+    state.mem_write(4, 0x69); // adc #$FF
+    state.mem_write(5, 0xFF);
 
     next(&mut state);
     assert_eq!(state.regs.pc, 2);

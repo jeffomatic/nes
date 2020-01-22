@@ -6,7 +6,7 @@ pub fn execute(state: &mut State, _operand: Operand) {
     state.stack_push16(state.regs.pc);
     state.stack_push(state.regs.p);
     state.regs.status_set(Status::BreakCommand, true);
-    state.regs.pc = state.memread16(0xFFFE);
+    state.regs.pc = state.mem_read16(0xFFFE);
 }
 
 #[test]
@@ -14,8 +14,8 @@ fn test() {
     let mut state = State::new();
     state.regs.pc = 0x201;
     state.regs.p = 0b1000_0001;
-    state.memwrite(0xFFFE, 0xFF);
-    state.memwrite(0xFFFF, 0x02);
+    state.mem_write(0xFFFE, 0xFF);
+    state.mem_write(0xFFFF, 0x02);
     execute(&mut state, Operand::None);
     assert_eq!(state.regs.pc, 0x2FF);
     assert_eq!(state.regs.p, 0b1001_0001);
