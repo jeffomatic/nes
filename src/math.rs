@@ -30,3 +30,27 @@ pub fn same_sign(x: u8, y: u8) -> bool {
 pub fn u16_to_bytes_le(x: u16) -> [u8; 2] {
     [x as u8, (x >> 8) as u8]
 }
+
+pub fn u16_hi(x: u16) -> u8 {
+    (x >> 8) as u8
+}
+
+pub fn u16_lo(x: u16) -> u8 {
+    x as u8
+}
+
+pub fn u16_set_hi(x: u16, hi: u8) -> u16 {
+    (x & 0xFF) | (hi as u16) << 8
+}
+
+pub fn u16_set_lo(x: u16, lo: u8) -> u16 {
+    (x & 0xFF00) | (lo as u16)
+}
+
+#[test]
+pub fn test_hi_lo() {
+    assert_eq!(u16_hi(0xABCD), 0xAB);
+    assert_eq!(u16_lo(0xABCD), 0xCD);
+    assert_eq!(u16_set_hi(0xABCD, 0xFF), 0xFFCD);
+    assert_eq!(u16_set_lo(0xABCD, 0xFF), 0xABFF);
+}

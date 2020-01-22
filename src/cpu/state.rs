@@ -82,9 +82,9 @@ impl Registers {
 
 #[derive(Clone, Default)]
 pub struct Vectors {
-    pub nmi: [u8; 2],
-    pub reset: [u8; 2],
-    pub irq_brk: [u8; 2],
+    pub nmi: u16,
+    pub reset: u16,
+    pub irq_brk: u16,
 }
 
 #[derive(Clone)]
@@ -106,12 +106,12 @@ impl State {
     pub fn memread(&self, addr: u16) -> u8 {
         match addr {
             0..=MAX_RAM_ADDR => self.ram[addr as usize],
-            0xFFFA => self.vectors.nmi[0],
-            0xFFFB => self.vectors.nmi[1],
-            0xFFFC => self.vectors.reset[0],
-            0xFFFD => self.vectors.reset[1],
-            0xFFFE => self.vectors.irq_brk[0],
-            0xFFFF => self.vectors.irq_brk[1],
+            0xFFFA => math::u16_lo(self.vectors.nmi),
+            0xFFFB => math::u16_hi(self.vectors.nmi),
+            0xFFFC => math::u16_lo(self.vectors.reset),
+            0xFFFD => math::u16_hi(self.vectors.reset),
+            0xFFFE => math::u16_lo(self.vectors.irq_brk),
+            0xFFFF => math::u16_hi(self.vectors.irq_brk),
             other => panic!("no memory map for address {:?}", other),
         }
     }
@@ -123,12 +123,12 @@ impl State {
     pub fn memwrite(&mut self, addr: u16, v: u8) {
         match addr {
             0..=0x7FF => self.ram[addr as usize] = v,
-            0xFFFA => self.vectors.nmi[0] = v,
-            0xFFFB => self.vectors.nmi[1] = v,
-            0xFFFC => self.vectors.reset[0] = v,
-            0xFFFD => self.vectors.reset[1] = v,
-            0xFFFE => self.vectors.irq_brk[0] = v,
-            0xFFFF => self.vectors.irq_brk[1] = v,
+            0xFFFA => self.vectors.nmi = math::u16_set_lo(self.vectors.nmi, v),
+            0xFFFB => self.vectors.nmi = math::u16_set_hi(self.vectors.nmi, v),
+            0xFFFC => self.vectors.reset = math::u16_set_lo(self.vectors.reset, v),
+            0xFFFD => self.vectors.reset = math::u16_set_hi(self.vectors.reset, v),
+            0xFFFE => self.vectors.irq_brk = math::u16_set_lo(self.vectors.irq_brk, v),
+            0xFFFF => self.vectors.irq_brk = math::u16_set_hi(self.vectors.irq_brk, v),
             other => panic!("no memory map for address {:?}", other),
         }
     }
