@@ -1,3 +1,4 @@
+use super::status::Status;
 use crate::math;
 
 const STACK_BASE: u16 = 0x100;
@@ -58,6 +59,23 @@ impl Registers {
             s: (STACK_SIZE - 1) as u8,
             p: 0,
         }
+    }
+
+    pub fn status_set(&mut self, s: Status, on: bool) {
+        if on {
+            self.p |= s.mask();
+        } else {
+            self.p &= !s.mask();
+        }
+    }
+
+    pub fn status_set_zn(&mut self, val: u8) {
+        self.status_set(Status::Zero, val == 0);
+        self.status_set(Status::Negative, val & 0b1000_0000 != 0);
+    }
+
+    pub fn status_check(&self, s: Status) -> bool {
+        self.p & s.mask() != 0
     }
 }
 

@@ -5,7 +5,7 @@ use super::super::status::Status;
 pub fn execute(state: &mut State, _operand: Operand) {
     state.stack_push16(state.regs.pc);
     state.stack_push(state.regs.p);
-    state.regs.p = Status::BreakCommand.set_into(state.regs.p, true);
+    state.regs.status_set(Status::BreakCommand, true);
     state.regs.pc = state.memread16(0xFFFE);
 }
 

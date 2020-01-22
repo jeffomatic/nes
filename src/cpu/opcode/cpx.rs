@@ -4,8 +4,8 @@ use super::super::status::Status;
 
 pub fn execute(state: &mut State, operand: Operand) {
     let opval = operand.read(state);
-    state.regs.p = Status::Carry.set_into(state.regs.p, state.regs.x >= opval);
-    state.regs.p = Status::with_zero_negative(state.regs.p, state.regs.x.wrapping_sub(opval));
+    state.regs.status_set(Status::Carry, state.regs.x >= opval);
+    state.regs.status_set_zn(state.regs.x.wrapping_sub(opval));
 }
 
 #[test]

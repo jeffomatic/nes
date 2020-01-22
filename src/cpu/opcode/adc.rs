@@ -8,7 +8,7 @@ pub fn execute(state: &mut State, operand: Operand) {
     let opval = operand.read(state);
     let res16 = prev as u16
         + opval as u16
-        + if Status::Carry.check(state.regs.p) {
+        + if state.regs.status_check(Status::Carry) {
             1
         } else {
             0
@@ -16,13 +16,14 @@ pub fn execute(state: &mut State, operand: Operand) {
     let res = res16 as u8;
 
     state.regs.a = res;
-    state.regs.p = Status::with_zero_negative(state.regs.p, res);
-    state.regs.p = Status::Carry.set_into(state.regs.p, res16 & 0x100 != 0);
-    state.regs.p = Status::Overflow.set_into(
-        state.regs.p,
-        // Overflow occurs in the following cases:
-        // positive + positive = negative
-        // negative + negative = positive
+    state.regs.status_set_zn(res);
+    state.regs.status_set(Status::Carry, res16 & 0x100 != 0);
+
+    // Overflow occurs in the following cases:
+    // positive + positive = negative
+    // negative + negative = positive
+    state.regs.status_set(
+        Status::Overflow,
         math::same_sign(prev, opval) && !math::same_sign(prev, res),
     );
 }

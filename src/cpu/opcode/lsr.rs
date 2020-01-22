@@ -6,8 +6,8 @@ pub fn execute(state: &mut State, operand: Operand) {
     let prev = operand.read(state);
     let res = prev >> 1;
     operand.write(state, res);
-    state.regs.p = Status::with_zero_negative(state.regs.p, res);
-    state.regs.p = Status::Carry.set_into(state.regs.p, prev & 1 != 0);
+    state.regs.status_set_zn(res);
+    state.regs.status_set(Status::Carry, prev & 1 != 0);
 }
 
 #[test]

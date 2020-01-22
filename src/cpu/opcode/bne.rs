@@ -4,7 +4,7 @@ use super::super::status::Status;
 use crate::math;
 
 pub fn execute(state: &mut State, operand: Operand) {
-    if Status::Zero.check(state.regs.p) {
+    if state.regs.status_check(Status::Zero) {
         return;
     }
 

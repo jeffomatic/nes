@@ -4,9 +4,13 @@ use super::super::status::Status;
 
 pub fn execute(state: &mut State, operand: Operand) {
     let v = operand.read(state);
-    state.regs.p = Status::Zero.set_into(state.regs.p, state.regs.a & v == 0);
-    state.regs.p = Status::Overflow.set_into(state.regs.p, v & 0b0100_0000 != 0);
-    state.regs.p = Status::Negative.set_into(state.regs.p, v & 0b1000_0000 != 0);
+    state.regs.status_set(Status::Zero, state.regs.a & v == 0);
+    state
+        .regs
+        .status_set(Status::Overflow, v & 0b0100_0000 != 0);
+    state
+        .regs
+        .status_set(Status::Negative, v & 0b1000_0000 != 0);
 }
 
 #[test]

@@ -4,7 +4,7 @@ use super::super::status::Status;
 
 pub fn execute(state: &mut State, _operand: Operand) {
     state.regs.a = state.regs.y;
-    state.regs.p = Status::with_zero_negative(state.regs.p, state.regs.a);
+    state.regs.status_set_zn(state.regs.a);
 }
 
 #[test]

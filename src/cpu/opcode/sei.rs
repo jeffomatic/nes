@@ -3,7 +3,7 @@ use super::super::state::State;
 use super::super::status::Status;
 
 pub fn execute(state: &mut State, _operand: Operand) {
-    state.regs.p = Status::InterruptDisable.set_into(state.regs.p, true);
+    state.regs.status_set(Status::InterruptDisable, true);
 }
 
 #[test]

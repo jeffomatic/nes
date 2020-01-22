@@ -5,7 +5,7 @@ use super::super::status::Status;
 pub fn execute(state: &mut State, _operand: Operand) {
     let res = state.regs.y.wrapping_add(1);
     state.regs.y = res;
-    state.regs.p = Status::with_zero_negative(state.regs.p, res);
+    state.regs.status_set_zn(res);
 }
 
 #[test]

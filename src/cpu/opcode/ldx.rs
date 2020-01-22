@@ -5,7 +5,7 @@ use crate::cpu::status::Status;
 pub fn execute(state: &mut State, operand: Operand) {
     let res = operand.read(state);
     state.regs.x = res;
-    state.regs.p = Status::with_zero_negative(state.regs.p, res);
+    state.regs.status_set_zn(res);
 }
 
 #[test]
