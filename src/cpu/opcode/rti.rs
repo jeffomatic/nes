@@ -1,19 +1,19 @@
 use super::super::operand::Operand;
-use super::super::state::State;
+use super::super::state::Cpu;
 
-pub fn execute(state: &mut State, _operand: Operand) {
-    state.regs.p = state.stack_pop();
-    state.regs.pc = state.stack_pop16();
+pub fn execute(cpu: &mut Cpu, _operand: Operand) {
+    cpu.regs.p = cpu.stack_pop();
+    cpu.regs.pc = cpu.stack_pop16();
 }
 
 #[test]
 fn test() {
-    let mut state = State::new();
-    state.stack_push(0x69); // sentinel
-    state.stack_push16(0x200); // PC
-    state.stack_push(1); // status
-    execute(&mut state, Operand::None);
-    assert_eq!(state.regs.pc, 0x200);
-    assert_eq!(state.regs.p, 1);
-    assert_eq!(state.stack_peek(0), 0x69);
+    let mut cpu = Cpu::new();
+    cpu.stack_push(0x69); // sentinel
+    cpu.stack_push16(0x200); // PC
+    cpu.stack_push(1); // status
+    execute(&mut cpu, Operand::None);
+    assert_eq!(cpu.regs.pc, 0x200);
+    assert_eq!(cpu.regs.p, 1);
+    assert_eq!(cpu.stack_peek(0), 0x69);
 }

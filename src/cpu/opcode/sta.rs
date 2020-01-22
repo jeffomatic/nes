@@ -1,15 +1,15 @@
 use crate::cpu::operand::Operand;
-use crate::cpu::state::State;
+use crate::cpu::state::Cpu;
 
-pub fn execute(state: &mut State, operand: Operand) {
-    operand.write(state, state.regs.a);
+pub fn execute(cpu: &mut Cpu, operand: Operand) {
+    operand.write(cpu, cpu.regs.a);
 }
 
 #[test]
 fn test() {
-    let mut state = State::new();
-    state.regs.a = 1;
-    state.mem_write(0x200, 0x69);
-    execute(&mut state, Operand::Memory(0x200));
-    assert_eq!(state.mem_read(0x200), 1);
+    let mut cpu = Cpu::new();
+    cpu.regs.a = 1;
+    cpu.mem_write(0x200, 0x69);
+    execute(&mut cpu, Operand::Memory(0x200));
+    assert_eq!(cpu.mem_read(0x200), 1);
 }

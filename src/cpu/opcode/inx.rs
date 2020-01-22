@@ -1,36 +1,36 @@
 use super::super::operand::Operand;
-use super::super::state::State;
+use super::super::state::Cpu;
 use super::super::status::Status;
 
-pub fn execute(state: &mut State, _operand: Operand) {
-    let res = state.regs.x.wrapping_add(1);
-    state.regs.x = res;
-    state.regs.status_set_zn(res);
+pub fn execute(cpu: &mut Cpu, _operand: Operand) {
+    let res = cpu.regs.x.wrapping_add(1);
+    cpu.regs.x = res;
+    cpu.regs.status_set_zn(res);
 }
 
 #[test]
 fn test() {
-    let mut state = State::new();
-    state.regs.x = 0xFE;
-    execute(&mut state, Operand::None);
-    assert_eq!(state.regs.x, 0xFF);
-    assert_eq!(state.regs.p, Status::Negative.mask());
+    let mut cpu = Cpu::new();
+    cpu.regs.x = 0xFE;
+    execute(&mut cpu, Operand::None);
+    assert_eq!(cpu.regs.x, 0xFF);
+    assert_eq!(cpu.regs.p, Status::Negative.mask());
 
-    let mut state = State::new();
-    state.regs.x = 0xFF;
-    execute(&mut state, Operand::None);
-    assert_eq!(state.regs.x, 0);
-    assert_eq!(state.regs.p, Status::Zero.mask());
+    let mut cpu = Cpu::new();
+    cpu.regs.x = 0xFF;
+    execute(&mut cpu, Operand::None);
+    assert_eq!(cpu.regs.x, 0);
+    assert_eq!(cpu.regs.p, Status::Zero.mask());
 
-    let mut state = State::new();
-    state.regs.x = 0;
-    execute(&mut state, Operand::None);
-    assert_eq!(state.regs.x, 1);
-    assert_eq!(state.regs.p, 0);
+    let mut cpu = Cpu::new();
+    cpu.regs.x = 0;
+    execute(&mut cpu, Operand::None);
+    assert_eq!(cpu.regs.x, 1);
+    assert_eq!(cpu.regs.p, 0);
 
-    let mut state = State::new();
-    state.regs.x = 1;
-    execute(&mut state, Operand::None);
-    assert_eq!(state.regs.x, 2);
-    assert_eq!(state.regs.p, 0);
+    let mut cpu = Cpu::new();
+    cpu.regs.x = 1;
+    execute(&mut cpu, Operand::None);
+    assert_eq!(cpu.regs.x, 2);
+    assert_eq!(cpu.regs.p, 0);
 }

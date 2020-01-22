@@ -1,14 +1,14 @@
 use super::super::operand::Operand;
-use super::super::state::State;
+use super::super::state::Cpu;
 
-pub fn execute(state: &mut State, operand: Operand) {
-    state.regs.pc = operand.address();
+pub fn execute(cpu: &mut Cpu, operand: Operand) {
+    cpu.regs.pc = operand.address();
 }
 
 #[test]
 fn test() {
-    let mut state = State::new();
-    state.regs.pc = 0x10;
-    execute(&mut state, Operand::Memory(0x20));
-    assert_eq!(state.regs.pc, 0x20);
+    let mut cpu = Cpu::new();
+    cpu.regs.pc = 0x10;
+    execute(&mut cpu, Operand::Memory(0x20));
+    assert_eq!(cpu.regs.pc, 0x20);
 }

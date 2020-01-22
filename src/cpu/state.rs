@@ -88,15 +88,15 @@ pub struct Vectors {
 }
 
 #[derive(Clone)]
-pub struct State {
+pub struct Cpu {
     pub regs: Registers,
     pub ram: [u8; RAM_SIZE],
     pub vectors: Vectors,
 }
 
-impl State {
-    pub fn new() -> State {
-        State {
+impl Cpu {
+    pub fn new() -> Cpu {
+        Cpu {
             regs: Registers::new(),
             ram: [0; RAM_SIZE],
             vectors: Vectors::default(),

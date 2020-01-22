@@ -1,14 +1,14 @@
 use crate::cpu::operand::Operand;
-use crate::cpu::state::State;
+use crate::cpu::state::Cpu;
 
-pub fn execute(state: &mut State, _operand: Operand) {
-    state.regs.a = state.stack_pop();
+pub fn execute(cpu: &mut Cpu, _operand: Operand) {
+    cpu.regs.a = cpu.stack_pop();
 }
 
 #[test]
 fn test() {
-    let mut state = State::new();
-    state.stack_push(1);
-    execute(&mut state, Operand::None);
-    assert_eq!(state.regs.a, 1);
+    let mut cpu = Cpu::new();
+    cpu.stack_push(1);
+    execute(&mut cpu, Operand::None);
+    assert_eq!(cpu.regs.a, 1);
 }
