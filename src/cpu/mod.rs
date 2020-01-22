@@ -5,7 +5,7 @@ mod state;
 mod status;
 
 fn next(cpu: &mut state::Cpu) {
-    let (opcode, operand) = decode::decode(cpu).unwrap();
+    let (opcode, operand, _cycles) = decode::decode(cpu).unwrap();
     opcode.execute(cpu, operand);
 }
 
