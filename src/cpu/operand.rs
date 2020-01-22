@@ -9,26 +9,26 @@ pub enum Operand {
 }
 
 impl Operand {
-    pub fn read(&self, state: &State) -> u8 {
+    pub fn read(self, state: &State) -> u8 {
         match self {
             Self::Accumulator => state.regs.a,
-            Self::Immediate(val) => *val,
-            Self::Memory(addr) => state.memread(*addr),
+            Self::Immediate(val) => val,
+            Self::Memory(addr) => state.memread(addr),
             other => panic!("no readable value for {:?} operand", other),
         }
     }
 
-    pub fn write(&self, state: &mut State, val: u8) {
+    pub fn write(self, state: &mut State, val: u8) {
         match self {
             Self::Accumulator => state.regs.a = val,
-            Self::Memory(addr) => state.memwrite(*addr, val),
+            Self::Memory(addr) => state.memwrite(addr, val),
             other => panic!("no writable value for {:?} operand", other),
         }
     }
 
-    pub fn address(&self) -> u16 {
+    pub fn address(self) -> u16 {
         match self {
-            Self::Memory(addr) => *addr,
+            Self::Memory(addr) => addr,
             other => panic!("no address for {:?} operand", other),
         }
     }

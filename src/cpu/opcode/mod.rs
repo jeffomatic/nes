@@ -119,7 +119,7 @@ pub enum Opcode {
 }
 
 impl Opcode {
-    pub fn execute(&self, state: &mut State, operand: Operand) {
+    pub fn execute(self, state: &mut State, operand: Operand) {
         match self {
             Opcode::Adc => adc::execute(state, operand),
             Opcode::And => and::execute(state, operand),
