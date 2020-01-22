@@ -43,8 +43,9 @@ pub struct Registers {
     // 4 - Break command: set during an interrupt sequence if the interrupt
     //     occurred due to user command.
     // 5 - Expansion bit: unused
-    // 6 - Overflow flag: set if the last op resulted in a value greater than
-    //     127. If this flag is set, the negative flag will also be set.
+    // 6 - Overflow flag: set if the last op resulted in a value larger than 127
+    //     or less than -128. If the overflow flag is set, the negative flag
+    //     should be interpreted with opposite semantics.
     // 7 - Negative flag: set if the last op resulted in a high bit of 1.
     pub p: u8,
 }
