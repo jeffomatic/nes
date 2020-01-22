@@ -26,7 +26,7 @@ enum AddressMode {
 /// next instruction.
 pub fn decode(cpu: &mut Cpu) -> Option<(Opcode, Operand, u64)> {
     let (opcode, addr_mode, cycles) = decode_raw_opcode(cpu.consume_instruction_byte())?;
-    let operand = decode_operand(cpu, addr_mode);
+    let operand = decode_operand(cpu, opcode, addr_mode);
     Some((opcode, operand, cycles))
 }
 
@@ -303,7 +303,7 @@ fn decode_raw_opcode(raw_opcode: u8) -> Option<(Opcode, AddressMode, u64)> {
     }
 }
 
-fn decode_operand(cpu: &mut Cpu, addr_mode: AddressMode) -> Operand {
+fn decode_operand(cpu: &mut Cpu, opcode: Opcode, addr_mode: AddressMode) -> Operand {
     match addr_mode {
         AddressMode::Implicit => Operand::None,
         AddressMode::Accumulator => Operand::Accumulator,
@@ -320,13 +320,15 @@ fn decode_operand(cpu: &mut Cpu, addr_mode: AddressMode) -> Operand {
             cpu.consume_instruction_byte(),
             cpu.consume_instruction_byte(),
         ])),
-        AddressMode::AbsoluteX => Operand::Memory(
+        AddressMode::AbsoluteX => Operand::new_indexed(
+            opcode,
             math::bytes_to_u16_le([
                 cpu.consume_instruction_byte(),
                 cpu.consume_instruction_byte(),
             ]) + cpu.regs.x as u16,
         ),
-        AddressMode::AbsoluteY => Operand::Memory(
+        AddressMode::AbsoluteY => Operand::new_indexed(
+            opcode,
             math::bytes_to_u16_le([
                 cpu.consume_instruction_byte(),
                 cpu.consume_instruction_byte(),
@@ -345,7 +347,7 @@ fn decode_operand(cpu: &mut Cpu, addr_mode: AddressMode) -> Operand {
         }
         AddressMode::IndirectY => {
             let base = cpu.consume_instruction_byte() as u16;
-            Operand::Memory(cpu.mem_read16(base) + cpu.regs.y as u16)
+            Operand::new_indexed(opcode, cpu.mem_read16(base) + cpu.regs.y as u16)
         }
     }
 }
@@ -354,7 +356,7 @@ fn decode_operand(cpu: &mut Cpu, addr_mode: AddressMode) -> Operand {
 fn test_decode_implicit() {
     let mut cpu = Cpu::new();
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::Implicit),
+        decode_operand(&mut cpu, Opcode::Brk, AddressMode::Implicit),
         Operand::None
     );
     assert_eq!(cpu.regs.pc, 0);
@@ -364,7 +366,7 @@ fn test_decode_implicit() {
 fn test_decode_accumulator() {
     let mut cpu = Cpu::new();
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::Accumulator),
+        decode_operand(&mut cpu, Opcode::Asl, AddressMode::Accumulator),
         Operand::Accumulator
     );
     assert_eq!(cpu.regs.pc, 0);
@@ -375,7 +377,7 @@ fn test_decode_immediate() {
     let mut cpu = Cpu::new();
     cpu.mem_write(0, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::Immediate),
+        decode_operand(&mut cpu, Opcode::Adc, AddressMode::Immediate),
         Operand::Immediate(0xAB),
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -387,7 +389,7 @@ fn test_decode_zero_page() {
     cpu.mem_write(0, 0x1F);
     cpu.mem_write(0x1F, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::ZeroPage),
+        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPage),
         Operand::Memory(0x1F)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -399,7 +401,7 @@ fn test_decode_zero_page_x() {
     cpu.regs.x = 1;
     cpu.mem_write(0, 0x10);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::ZeroPageX),
+        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPageX),
         Operand::Memory(0x11)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -409,7 +411,7 @@ fn test_decode_zero_page_x() {
     cpu.regs.x = 2;
     cpu.mem_write(0, 0xFF);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::ZeroPageX),
+        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPageX),
         Operand::Memory(0x01)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -421,7 +423,7 @@ fn test_decode_zero_page_y() {
     cpu.regs.y = 1;
     cpu.mem_write(0, 0x10);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::ZeroPageY),
+        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPageY),
         Operand::Memory(0x11)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -431,7 +433,7 @@ fn test_decode_zero_page_y() {
     cpu.regs.y = 2;
     cpu.mem_write(0, 0xFF);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::ZeroPageY),
+        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPageY),
         Operand::Memory(0x01)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -442,7 +444,7 @@ fn test_decode_relative() {
     let mut cpu = Cpu::new();
     cpu.mem_write(0, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::Relative),
+        decode_operand(&mut cpu, Opcode::Beq, AddressMode::Relative),
         Operand::Immediate(0xAB),
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -454,7 +456,7 @@ fn test_decode_absolute() {
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::Absolute),
+        decode_operand(&mut cpu, Opcode::Jsr, AddressMode::Absolute),
         Operand::Memory(0xABCD)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -462,12 +464,35 @@ fn test_decode_absolute() {
 
 #[test]
 fn test_decode_absolute_x() {
+    // Read-only op
     let mut cpu = Cpu::new();
     cpu.regs.x = 0x1;
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::AbsoluteX),
+        decode_operand(&mut cpu, Opcode::Lda, AddressMode::AbsoluteX),
+        Operand::MemoryIndexedReadOnly(0xABCE)
+    );
+    assert_eq!(cpu.regs.pc, 2);
+
+    // Write-only op
+    let mut cpu = Cpu::new();
+    cpu.regs.x = 0x1;
+    cpu.mem_write(0, 0xCD);
+    cpu.mem_write(1, 0xAB);
+    assert_eq!(
+        decode_operand(&mut cpu, Opcode::Sta, AddressMode::AbsoluteX),
+        Operand::Memory(0xABCE)
+    );
+    assert_eq!(cpu.regs.pc, 2);
+
+    // Read/write op
+    let mut cpu = Cpu::new();
+    cpu.regs.x = 0x1;
+    cpu.mem_write(0, 0xCD);
+    cpu.mem_write(1, 0xAB);
+    assert_eq!(
+        decode_operand(&mut cpu, Opcode::Dec, AddressMode::AbsoluteX),
         Operand::Memory(0xABCE)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -475,12 +500,35 @@ fn test_decode_absolute_x() {
 
 #[test]
 fn test_decode_absolute_y() {
+    // Read-only op
     let mut cpu = Cpu::new();
     cpu.regs.y = 0x1;
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::AbsoluteY),
+        decode_operand(&mut cpu, Opcode::Lda, AddressMode::AbsoluteY),
+        Operand::MemoryIndexedReadOnly(0xABCE)
+    );
+    assert_eq!(cpu.regs.pc, 2);
+
+    // Write-only op
+    let mut cpu = Cpu::new();
+    cpu.regs.y = 0x1;
+    cpu.mem_write(0, 0xCD);
+    cpu.mem_write(1, 0xAB);
+    assert_eq!(
+        decode_operand(&mut cpu, Opcode::Sta, AddressMode::AbsoluteY),
+        Operand::Memory(0xABCE)
+    );
+    assert_eq!(cpu.regs.pc, 2);
+
+    // Read/write op
+    let mut cpu = Cpu::new();
+    cpu.regs.y = 0x1;
+    cpu.mem_write(0, 0xCD);
+    cpu.mem_write(1, 0xAB);
+    assert_eq!(
+        decode_operand(&mut cpu, Opcode::Dec, AddressMode::AbsoluteY),
         Operand::Memory(0xABCE)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -495,7 +543,7 @@ fn test_decode_indirect() {
     cpu.mem_write(0x1FF, 0xCD);
     cpu.mem_write(0x200, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::Indirect),
+        decode_operand(&mut cpu, Opcode::Jmp, AddressMode::Indirect),
         Operand::Memory(0xABCD)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -509,7 +557,7 @@ fn test_decode_indirect_x() {
     cpu.mem_write(0x10, 0xCD);
     cpu.mem_write(0x11, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::IndirectX),
+        decode_operand(&mut cpu, Opcode::Adc, AddressMode::IndirectX),
         Operand::Memory(0xABCD)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -521,7 +569,7 @@ fn test_decode_indirect_x() {
     cpu.mem_write(1, 0xCD);
     cpu.mem_write(2, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::IndirectX),
+        decode_operand(&mut cpu, Opcode::Adc, AddressMode::IndirectX),
         Operand::Memory(0xABCD)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -529,13 +577,38 @@ fn test_decode_indirect_x() {
 
 #[test]
 fn test_decode_indirect_y() {
+    // Read-only op
     let mut cpu = Cpu::new();
     cpu.regs.y = 1;
     cpu.mem_write(0, 0xF);
     cpu.mem_write(0xF, 0xCD);
     cpu.mem_write(0x10, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, AddressMode::IndirectY),
+        decode_operand(&mut cpu, Opcode::Lda, AddressMode::IndirectY),
+        Operand::MemoryIndexedReadOnly(0xABCE)
+    );
+    assert_eq!(cpu.regs.pc, 1);
+
+    // Write-only op
+    let mut cpu = Cpu::new();
+    cpu.regs.y = 1;
+    cpu.mem_write(0, 0xF);
+    cpu.mem_write(0xF, 0xCD);
+    cpu.mem_write(0x10, 0xAB);
+    assert_eq!(
+        decode_operand(&mut cpu, Opcode::Sta, AddressMode::IndirectY),
+        Operand::Memory(0xABCE)
+    );
+    assert_eq!(cpu.regs.pc, 1);
+
+    // Read/write op
+    let mut cpu = Cpu::new();
+    cpu.regs.y = 1;
+    cpu.mem_write(0, 0xF);
+    cpu.mem_write(0xF, 0xCD);
+    cpu.mem_write(0x10, 0xAB);
+    assert_eq!(
+        decode_operand(&mut cpu, Opcode::Dec, AddressMode::IndirectY),
         Operand::Memory(0xABCE)
     );
     assert_eq!(cpu.regs.pc, 1);
