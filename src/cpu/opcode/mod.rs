@@ -1,7 +1,7 @@
 use crate::cpu::operand::Operand;
 use crate::cpu::state::Cpu;
 
-mod adc;
+mod arithmetic;
 mod asl;
 mod branch;
 mod brk;
@@ -9,9 +9,6 @@ mod clc;
 mod cld;
 mod cli;
 mod clv;
-mod cmp;
-mod cpx;
-mod cpy;
 mod dec;
 mod dex;
 mod dey;
@@ -27,7 +24,6 @@ mod rol;
 mod ror;
 mod rti;
 mod rts;
-mod sbc;
 mod sec;
 mod sed;
 mod sei;
@@ -98,7 +94,7 @@ pub enum Opcode {
 impl Opcode {
     pub fn execute(self, cpu: &mut Cpu, operand: Operand) {
         match self {
-            Opcode::Adc => adc::execute(cpu, operand),
+            Opcode::Adc => arithmetic::adc(cpu, operand),
             Opcode::And => logic::and(cpu, operand),
             Opcode::Asl => asl::execute(cpu, operand),
             Opcode::Bcc => branch::bcc(cpu, operand),
@@ -115,9 +111,9 @@ impl Opcode {
             Opcode::Cld => cld::execute(cpu, operand),
             Opcode::Cli => cli::execute(cpu, operand),
             Opcode::Clv => clv::execute(cpu, operand),
-            Opcode::Cmp => cmp::execute(cpu, operand),
-            Opcode::Cpx => cpx::execute(cpu, operand),
-            Opcode::Cpy => cpy::execute(cpu, operand),
+            Opcode::Cmp => arithmetic::cmp(cpu, operand),
+            Opcode::Cpx => arithmetic::cpx(cpu, operand),
+            Opcode::Cpy => arithmetic::cpy(cpu, operand),
             Opcode::Dec => dec::execute(cpu, operand),
             Opcode::Dex => dex::execute(cpu, operand),
             Opcode::Dey => dey::execute(cpu, operand),
@@ -141,7 +137,7 @@ impl Opcode {
             Opcode::Ror => ror::execute(cpu, operand),
             Opcode::Rti => rti::execute(cpu, operand),
             Opcode::Rts => rts::execute(cpu, operand),
-            Opcode::Sbc => sbc::execute(cpu, operand),
+            Opcode::Sbc => arithmetic::sbc(cpu, operand),
             Opcode::Sec => sec::execute(cpu, operand),
             Opcode::Sed => sed::execute(cpu, operand),
             Opcode::Sei => sei::execute(cpu, operand),
