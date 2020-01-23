@@ -2,9 +2,7 @@ use crate::cpu::operand::Operand;
 use crate::cpu::state::Cpu;
 
 mod adc;
-mod and;
 mod asl;
-mod bit;
 mod branch;
 mod brk;
 mod clc;
@@ -17,15 +15,14 @@ mod cpy;
 mod dec;
 mod dex;
 mod dey;
-mod eor;
 mod inc;
 mod inx;
 mod iny;
 mod jmp;
 mod jsr;
 mod loadstore;
+mod logic;
 mod lsr;
-mod ora;
 mod rol;
 mod ror;
 mod rti;
@@ -102,12 +99,12 @@ impl Opcode {
     pub fn execute(self, cpu: &mut Cpu, operand: Operand) {
         match self {
             Opcode::Adc => adc::execute(cpu, operand),
-            Opcode::And => and::execute(cpu, operand),
+            Opcode::And => logic::and(cpu, operand),
             Opcode::Asl => asl::execute(cpu, operand),
             Opcode::Bcc => branch::bcc(cpu, operand),
             Opcode::Bcs => branch::bcs(cpu, operand),
             Opcode::Beq => branch::beq(cpu, operand),
-            Opcode::Bit => bit::execute(cpu, operand),
+            Opcode::Bit => logic::bit(cpu, operand),
             Opcode::Bmi => branch::bmi(cpu, operand),
             Opcode::Bne => branch::bne(cpu, operand),
             Opcode::Bpl => branch::bpl(cpu, operand),
@@ -124,7 +121,7 @@ impl Opcode {
             Opcode::Dec => dec::execute(cpu, operand),
             Opcode::Dex => dex::execute(cpu, operand),
             Opcode::Dey => dey::execute(cpu, operand),
-            Opcode::Eor => eor::execute(cpu, operand),
+            Opcode::Eor => logic::eor(cpu, operand),
             Opcode::Inc => inc::execute(cpu, operand),
             Opcode::Inx => inx::execute(cpu, operand),
             Opcode::Iny => iny::execute(cpu, operand),
@@ -135,7 +132,7 @@ impl Opcode {
             Opcode::Ldy => loadstore::ldy(cpu, operand),
             Opcode::Lsr => lsr::execute(cpu, operand),
             Opcode::Nop => (),
-            Opcode::Ora => ora::execute(cpu, operand),
+            Opcode::Ora => logic::ora(cpu, operand),
             Opcode::Pha => stack::pha(cpu, operand),
             Opcode::Php => stack::php(cpu, operand),
             Opcode::Pla => stack::pla(cpu, operand),
