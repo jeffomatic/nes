@@ -54,3 +54,7 @@ pub fn test_hi_lo() {
     assert_eq!(u16_set_hi(0xABCD, 0xFF), 0xFFCD);
     assert_eq!(u16_set_lo(0xABCD, 0xFF), 0xABFF);
 }
+
+pub fn page_crossing(x: u16, y: u16) -> bool {
+    x & 0xFF00 != y & 0xFF00
+}

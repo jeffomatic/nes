@@ -404,7 +404,7 @@ fn decode_operand(cpu: &mut Cpu, opcode: Opcode, addr_mode: AddressMode) -> (Ope
 // memory, or read from and write to the same address, must incur the full cost
 // of a two-cycle add. The base cycle cost for those opcodes accounts for this.
 fn page_crossing_cycle_adjusment(opcode: Opcode, before: u16, after: u16) -> u64 {
-    if !opcode.writes_memory() && ((before & 0xFF00) != (after & 0xFF00)) {
+    if !opcode.writes_memory() && math::page_crossing(before, after) {
         1
     } else {
         0
