@@ -9,12 +9,7 @@ mod clc;
 mod cld;
 mod cli;
 mod clv;
-mod dec;
-mod dex;
-mod dey;
-mod inc;
-mod inx;
-mod iny;
+mod incdec;
 mod jmp;
 mod jsr;
 mod loadstore;
@@ -114,13 +109,13 @@ impl Opcode {
             Opcode::Cmp => arithmetic::cmp(cpu, operand),
             Opcode::Cpx => arithmetic::cpx(cpu, operand),
             Opcode::Cpy => arithmetic::cpy(cpu, operand),
-            Opcode::Dec => dec::execute(cpu, operand),
-            Opcode::Dex => dex::execute(cpu, operand),
-            Opcode::Dey => dey::execute(cpu, operand),
+            Opcode::Dec => incdec::dec(cpu, operand),
+            Opcode::Dex => incdec::dex(cpu, operand),
+            Opcode::Dey => incdec::dey(cpu, operand),
             Opcode::Eor => logic::eor(cpu, operand),
-            Opcode::Inc => inc::execute(cpu, operand),
-            Opcode::Inx => inx::execute(cpu, operand),
-            Opcode::Iny => iny::execute(cpu, operand),
+            Opcode::Inc => incdec::inc(cpu, operand),
+            Opcode::Inx => incdec::inx(cpu, operand),
+            Opcode::Iny => incdec::iny(cpu, operand),
             Opcode::Jmp => jmp::execute(cpu, operand),
             Opcode::Jsr => jsr::execute(cpu, operand),
             Opcode::Lda => loadstore::lda(cpu, operand),
