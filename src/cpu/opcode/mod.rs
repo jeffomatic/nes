@@ -23,9 +23,7 @@ mod inx;
 mod iny;
 mod jmp;
 mod jsr;
-mod lda;
-mod ldx;
-mod ldy;
+mod loadstore;
 mod lsr;
 mod ora;
 mod pha;
@@ -40,9 +38,6 @@ mod sbc;
 mod sec;
 mod sed;
 mod sei;
-mod sta;
-mod stx;
-mod sty;
 mod tax;
 mod tay;
 mod tsx;
@@ -143,9 +138,9 @@ impl Opcode {
             Opcode::Iny => iny::execute(cpu, operand),
             Opcode::Jmp => jmp::execute(cpu, operand),
             Opcode::Jsr => jsr::execute(cpu, operand),
-            Opcode::Lda => lda::execute(cpu, operand),
-            Opcode::Ldx => ldx::execute(cpu, operand),
-            Opcode::Ldy => ldy::execute(cpu, operand),
+            Opcode::Lda => loadstore::lda(cpu, operand),
+            Opcode::Ldx => loadstore::ldx(cpu, operand),
+            Opcode::Ldy => loadstore::ldy(cpu, operand),
             Opcode::Lsr => lsr::execute(cpu, operand),
             Opcode::Nop => (),
             Opcode::Ora => ora::execute(cpu, operand),
@@ -161,9 +156,9 @@ impl Opcode {
             Opcode::Sec => sec::execute(cpu, operand),
             Opcode::Sed => sed::execute(cpu, operand),
             Opcode::Sei => sei::execute(cpu, operand),
-            Opcode::Sta => sta::execute(cpu, operand),
-            Opcode::Stx => stx::execute(cpu, operand),
-            Opcode::Sty => sty::execute(cpu, operand),
+            Opcode::Sta => loadstore::sta(cpu, operand),
+            Opcode::Stx => loadstore::stx(cpu, operand),
+            Opcode::Sty => loadstore::sty(cpu, operand),
             Opcode::Tax => tax::execute(cpu, operand),
             Opcode::Tay => tay::execute(cpu, operand),
             Opcode::Tsx => tsx::execute(cpu, operand),
