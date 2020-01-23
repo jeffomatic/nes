@@ -48,7 +48,7 @@ fn test_operand_accumulator() {
 
 #[test]
 fn test_operand_immediate() {
-    let mut cpu = Cpu::new();
+    let cpu = Cpu::new();
     let op = Operand::Immediate(0xAB);
     assert_eq!(op.read(&cpu), 0xAB);
 }
