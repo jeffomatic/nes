@@ -2,7 +2,6 @@ use crate::cpu::operand::Operand;
 use crate::cpu::state::Cpu;
 
 mod arithmetic;
-mod asl;
 mod branch;
 mod brk;
 mod clc;
@@ -14,14 +13,12 @@ mod jmp;
 mod jsr;
 mod loadstore;
 mod logic;
-mod lsr;
-mod rol;
-mod ror;
 mod rti;
 mod rts;
 mod sec;
 mod sed;
 mod sei;
+mod shift;
 mod stack;
 mod transfer;
 
@@ -91,7 +88,7 @@ impl Opcode {
         match self {
             Opcode::Adc => arithmetic::adc(cpu, operand),
             Opcode::And => logic::and(cpu, operand),
-            Opcode::Asl => asl::execute(cpu, operand),
+            Opcode::Asl => shift::asl(cpu, operand),
             Opcode::Bcc => branch::bcc(cpu, operand),
             Opcode::Bcs => branch::bcs(cpu, operand),
             Opcode::Beq => branch::beq(cpu, operand),
@@ -121,15 +118,15 @@ impl Opcode {
             Opcode::Lda => loadstore::lda(cpu, operand),
             Opcode::Ldx => loadstore::ldx(cpu, operand),
             Opcode::Ldy => loadstore::ldy(cpu, operand),
-            Opcode::Lsr => lsr::execute(cpu, operand),
+            Opcode::Lsr => shift::lsr(cpu, operand),
             Opcode::Nop => (),
             Opcode::Ora => logic::ora(cpu, operand),
             Opcode::Pha => stack::pha(cpu, operand),
             Opcode::Php => stack::php(cpu, operand),
             Opcode::Pla => stack::pla(cpu, operand),
             Opcode::Plp => stack::plp(cpu, operand),
-            Opcode::Rol => rol::execute(cpu, operand),
-            Opcode::Ror => ror::execute(cpu, operand),
+            Opcode::Rol => shift::rol(cpu, operand),
+            Opcode::Ror => shift::ror(cpu, operand),
             Opcode::Rti => rti::execute(cpu, operand),
             Opcode::Rts => rts::execute(cpu, operand),
             Opcode::Sbc => arithmetic::sbc(cpu, operand),
