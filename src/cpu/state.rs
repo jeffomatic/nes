@@ -89,6 +89,7 @@ pub struct Vectors {
 
 #[derive(Clone)]
 pub struct Cpu {
+    pub cycles: u64,
     pub regs: Registers,
     pub ram: [u8; RAM_SIZE],
     pub vectors: Vectors,
@@ -97,10 +98,15 @@ pub struct Cpu {
 impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
+            cycles: 0,
             regs: Registers::new(),
             ram: [0; RAM_SIZE],
             vectors: Vectors::default(),
         }
+    }
+
+    pub fn cycle_add(&mut self, amt: u64) {
+        self.cycles += amt;
     }
 
     pub fn mem_read(&self, addr: u16) -> u8 {

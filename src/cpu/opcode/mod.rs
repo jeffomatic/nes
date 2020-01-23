@@ -179,4 +179,11 @@ impl Opcode {
             Opcode::Tya => tya::execute(cpu, operand),
         }
     }
+
+    pub fn writes_memory(self) -> bool {
+        match self {
+            Self::Asl | Self::Dec | Self::Inc | Self::Rol | Self::Ror | Self::Sta => true,
+            _ => false,
+        }
+    }
 }
