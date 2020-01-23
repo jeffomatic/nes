@@ -4,16 +4,9 @@ use crate::cpu::state::Cpu;
 mod adc;
 mod and;
 mod asl;
-mod bcc;
-mod bcs;
-mod beq;
 mod bit;
-mod bmi;
-mod bne;
-mod bpl;
+mod branch;
 mod brk;
-mod bvc;
-mod bvs;
 mod clc;
 mod cld;
 mod cli;
@@ -124,16 +117,16 @@ impl Opcode {
             Opcode::Adc => adc::execute(cpu, operand),
             Opcode::And => and::execute(cpu, operand),
             Opcode::Asl => asl::execute(cpu, operand),
-            Opcode::Bcc => bcc::execute(cpu, operand),
-            Opcode::Bcs => bcs::execute(cpu, operand),
-            Opcode::Beq => beq::execute(cpu, operand),
+            Opcode::Bcc => branch::bcc(cpu, operand),
+            Opcode::Bcs => branch::bcs(cpu, operand),
+            Opcode::Beq => branch::beq(cpu, operand),
             Opcode::Bit => bit::execute(cpu, operand),
-            Opcode::Bmi => bmi::execute(cpu, operand),
-            Opcode::Bne => bne::execute(cpu, operand),
-            Opcode::Bpl => bpl::execute(cpu, operand),
+            Opcode::Bmi => branch::bmi(cpu, operand),
+            Opcode::Bne => branch::bne(cpu, operand),
+            Opcode::Bpl => branch::bpl(cpu, operand),
             Opcode::Brk => brk::execute(cpu, operand),
-            Opcode::Bvc => bvc::execute(cpu, operand),
-            Opcode::Bvs => bvs::execute(cpu, operand),
+            Opcode::Bvc => branch::bvc(cpu, operand),
+            Opcode::Bvs => branch::bvs(cpu, operand),
             Opcode::Clc => clc::execute(cpu, operand),
             Opcode::Cld => cld::execute(cpu, operand),
             Opcode::Cli => cli::execute(cpu, operand),
