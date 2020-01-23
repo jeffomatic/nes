@@ -4,20 +4,14 @@ use crate::cpu::state::Cpu;
 mod arithmetic;
 mod branch;
 mod brk;
-mod clc;
-mod cld;
-mod cli;
-mod clv;
 mod incdec;
 mod jump;
 mod loadstore;
 mod logic;
 mod rti;
-mod sec;
-mod sed;
-mod sei;
 mod shift;
 mod stack;
+mod status;
 mod transfer;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
@@ -97,10 +91,10 @@ impl Opcode {
             Opcode::Brk => brk::execute(cpu, operand),
             Opcode::Bvc => branch::bvc(cpu, operand),
             Opcode::Bvs => branch::bvs(cpu, operand),
-            Opcode::Clc => clc::execute(cpu, operand),
-            Opcode::Cld => cld::execute(cpu, operand),
-            Opcode::Cli => cli::execute(cpu, operand),
-            Opcode::Clv => clv::execute(cpu, operand),
+            Opcode::Clc => status::clc(cpu, operand),
+            Opcode::Cld => status::cld(cpu, operand),
+            Opcode::Cli => status::cli(cpu, operand),
+            Opcode::Clv => status::clv(cpu, operand),
             Opcode::Cmp => arithmetic::cmp(cpu, operand),
             Opcode::Cpx => arithmetic::cpx(cpu, operand),
             Opcode::Cpy => arithmetic::cpy(cpu, operand),
@@ -128,9 +122,9 @@ impl Opcode {
             Opcode::Rti => rti::execute(cpu, operand),
             Opcode::Rts => jump::rts(cpu, operand),
             Opcode::Sbc => arithmetic::sbc(cpu, operand),
-            Opcode::Sec => sec::execute(cpu, operand),
-            Opcode::Sed => sed::execute(cpu, operand),
-            Opcode::Sei => sei::execute(cpu, operand),
+            Opcode::Sec => status::sec(cpu, operand),
+            Opcode::Sed => status::sed(cpu, operand),
+            Opcode::Sei => status::sei(cpu, operand),
             Opcode::Sta => loadstore::sta(cpu, operand),
             Opcode::Stx => loadstore::stx(cpu, operand),
             Opcode::Sty => loadstore::sty(cpu, operand),
