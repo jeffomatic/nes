@@ -3,15 +3,14 @@ use crate::cpu::state::Cpu;
 
 mod arithmetic;
 mod branch;
-mod brk;
 mod incdec;
 mod jump;
 mod loadstore;
 mod logic;
-mod rti;
 mod shift;
 mod stack;
 mod status;
+mod system;
 mod transfer;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
@@ -88,7 +87,7 @@ impl Opcode {
             Opcode::Bmi => branch::bmi(cpu, operand),
             Opcode::Bne => branch::bne(cpu, operand),
             Opcode::Bpl => branch::bpl(cpu, operand),
-            Opcode::Brk => brk::execute(cpu, operand),
+            Opcode::Brk => system::brk(cpu, operand),
             Opcode::Bvc => branch::bvc(cpu, operand),
             Opcode::Bvs => branch::bvs(cpu, operand),
             Opcode::Clc => status::clc(cpu, operand),
@@ -111,7 +110,7 @@ impl Opcode {
             Opcode::Ldx => loadstore::ldx(cpu, operand),
             Opcode::Ldy => loadstore::ldy(cpu, operand),
             Opcode::Lsr => shift::lsr(cpu, operand),
-            Opcode::Nop => (),
+            Opcode::Nop => system::nop(cpu, operand),
             Opcode::Ora => logic::ora(cpu, operand),
             Opcode::Pha => stack::pha(cpu, operand),
             Opcode::Php => stack::php(cpu, operand),
@@ -119,7 +118,7 @@ impl Opcode {
             Opcode::Plp => stack::plp(cpu, operand),
             Opcode::Rol => shift::rol(cpu, operand),
             Opcode::Ror => shift::ror(cpu, operand),
-            Opcode::Rti => rti::execute(cpu, operand),
+            Opcode::Rti => system::rti(cpu, operand),
             Opcode::Rts => jump::rts(cpu, operand),
             Opcode::Sbc => arithmetic::sbc(cpu, operand),
             Opcode::Sec => status::sec(cpu, operand),
