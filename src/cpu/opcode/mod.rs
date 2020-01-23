@@ -38,12 +38,9 @@ mod sbc;
 mod sec;
 mod sed;
 mod sei;
-mod tax;
-mod tay;
+mod transfer;
 mod tsx;
-mod txa;
 mod txs;
-mod tya;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
 #[derive(Clone, Copy, Debug)]
@@ -159,12 +156,12 @@ impl Opcode {
             Opcode::Sta => loadstore::sta(cpu, operand),
             Opcode::Stx => loadstore::stx(cpu, operand),
             Opcode::Sty => loadstore::sty(cpu, operand),
-            Opcode::Tax => tax::execute(cpu, operand),
-            Opcode::Tay => tay::execute(cpu, operand),
+            Opcode::Tax => transfer::tax(cpu, operand),
+            Opcode::Tay => transfer::tay(cpu, operand),
             Opcode::Tsx => tsx::execute(cpu, operand),
-            Opcode::Txa => txa::execute(cpu, operand),
+            Opcode::Txa => transfer::txa(cpu, operand),
             Opcode::Txs => txs::execute(cpu, operand),
-            Opcode::Tya => tya::execute(cpu, operand),
+            Opcode::Tya => transfer::tya(cpu, operand),
         }
     }
 
