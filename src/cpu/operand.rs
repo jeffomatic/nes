@@ -9,21 +9,28 @@ pub enum Operand {
     Memory(u16),
 
     // Calling read() on a MemoryIndexReadOnly variant will consume one cycle.
-    // This is because the base opcode/address mdoe cost assumes an optimization
-    // that might not always be in effect.
+    // This is because the base opcode/address mode cost is a discounted cost,
+    // which assumes an optimization that isn't always possible to apply. If the
+    // optimization isn't available, we have to consume the extra cycle.
     //
     // Some opcode/addressing mode combinations perform an indexed read, in which
     // an 8-bit offset is added to an 16-bit address. The adder is only 8 bits,
-    // so a full add requires two cycles. However, an optimization allows us to
-    // pre-emptivly read the summed address after the first 8 bits of the add
-    // are processed. If there is no carry, then the address we read is correct.
-    // If there _is_ carry, then we need to burn another cycle to read the
-    // address after the one we just read.
+    // so a full add requires two cycles, in order to account for a possible
+    // carry after adding the low bytes. However, we can pre-emptivly read the
+    // summed address after the low bytes are processed. If there is no carry,
+    // then the address we read is correct. If there _is_ carry, then we need to
+    // burn another cycle to read the address immediately after the one we just
+    // read.
     //
     // Cases where we burn an extra cycle are referred to as "page crossings",
     // because the high byte of the summed address will be one greater than the
     // high byte of the base address. For example, there is a page crossing
     // between 0x1FF and 0x200.
+    //
+    // The early-out read optimization is only available for read-only memory
+    // access. We can pre-emptively read from memory, but we cannot pre-emptively
+    // write, so both write-only and read/write operations must complete the
+    // full addition operation in all cases.
     MemoryIndexedReadOnly(u16),
 }
 
