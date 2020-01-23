@@ -9,12 +9,10 @@ mod cld;
 mod cli;
 mod clv;
 mod incdec;
-mod jmp;
-mod jsr;
+mod jump;
 mod loadstore;
 mod logic;
 mod rti;
-mod rts;
 mod sec;
 mod sed;
 mod sei;
@@ -113,8 +111,8 @@ impl Opcode {
             Opcode::Inc => incdec::inc(cpu, operand),
             Opcode::Inx => incdec::inx(cpu, operand),
             Opcode::Iny => incdec::iny(cpu, operand),
-            Opcode::Jmp => jmp::execute(cpu, operand),
-            Opcode::Jsr => jsr::execute(cpu, operand),
+            Opcode::Jmp => jump::jmp(cpu, operand),
+            Opcode::Jsr => jump::jsr(cpu, operand),
             Opcode::Lda => loadstore::lda(cpu, operand),
             Opcode::Ldx => loadstore::ldx(cpu, operand),
             Opcode::Ldy => loadstore::ldy(cpu, operand),
@@ -128,7 +126,7 @@ impl Opcode {
             Opcode::Rol => shift::rol(cpu, operand),
             Opcode::Ror => shift::ror(cpu, operand),
             Opcode::Rti => rti::execute(cpu, operand),
-            Opcode::Rts => rts::execute(cpu, operand),
+            Opcode::Rts => jump::rts(cpu, operand),
             Opcode::Sbc => arithmetic::sbc(cpu, operand),
             Opcode::Sec => sec::execute(cpu, operand),
             Opcode::Sed => sed::execute(cpu, operand),
