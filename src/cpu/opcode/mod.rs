@@ -26,10 +26,6 @@ mod jsr;
 mod loadstore;
 mod lsr;
 mod ora;
-mod pha;
-mod php;
-mod pla;
-mod plp;
 mod rol;
 mod ror;
 mod rti;
@@ -38,9 +34,8 @@ mod sbc;
 mod sec;
 mod sed;
 mod sei;
+mod stack;
 mod transfer;
-mod tsx;
-mod txs;
 
 // Reference: http://obelisk.me.uk/6502/reference.html
 #[derive(Clone, Copy, Debug)]
@@ -141,10 +136,10 @@ impl Opcode {
             Opcode::Lsr => lsr::execute(cpu, operand),
             Opcode::Nop => (),
             Opcode::Ora => ora::execute(cpu, operand),
-            Opcode::Pha => pha::execute(cpu, operand),
-            Opcode::Php => php::execute(cpu, operand),
-            Opcode::Pla => pla::execute(cpu, operand),
-            Opcode::Plp => plp::execute(cpu, operand),
+            Opcode::Pha => stack::pha(cpu, operand),
+            Opcode::Php => stack::php(cpu, operand),
+            Opcode::Pla => stack::pla(cpu, operand),
+            Opcode::Plp => stack::plp(cpu, operand),
             Opcode::Rol => rol::execute(cpu, operand),
             Opcode::Ror => ror::execute(cpu, operand),
             Opcode::Rti => rti::execute(cpu, operand),
@@ -158,9 +153,9 @@ impl Opcode {
             Opcode::Sty => loadstore::sty(cpu, operand),
             Opcode::Tax => transfer::tax(cpu, operand),
             Opcode::Tay => transfer::tay(cpu, operand),
-            Opcode::Tsx => tsx::execute(cpu, operand),
+            Opcode::Tsx => stack::tsx(cpu, operand),
             Opcode::Txa => transfer::txa(cpu, operand),
-            Opcode::Txs => txs::execute(cpu, operand),
+            Opcode::Txs => stack::txs(cpu, operand),
             Opcode::Tya => transfer::tya(cpu, operand),
         }
     }
