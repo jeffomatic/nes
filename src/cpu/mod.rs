@@ -1,3 +1,4 @@
+mod address_mode;
 mod decode;
 mod opcode;
 mod operand;

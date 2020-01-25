@@ -1,25 +1,8 @@
+use super::address_mode::AddressMode;
 use super::opcode::Opcode;
 use super::operand::Operand;
 use super::state::Cpu;
 use crate::math;
-
-// Reference: http://obelisk.me.uk/6502/addressing.html
-#[derive(Clone, Copy, Debug)]
-enum AddressMode {
-    Implicit,
-    Accumulator,
-    Immediate,
-    ZeroPage,
-    ZeroPageX,
-    ZeroPageY,
-    Relative,
-    Absolute,
-    AbsoluteX,
-    AbsoluteY,
-    Indirect,
-    IndirectX, // aka "indexed indirect"
-    IndirectY, // aka "indirect indexed"
-}
 
 /// Decodes the instruction at the PC and returns a tuple containing the opcode,
 /// operand, and base cycle cost. The PC will be incremented to the start of the
@@ -30,277 +13,994 @@ pub fn decode(cpu: &mut Cpu) -> Option<(Opcode, Operand, u64)> {
     Some((opcode, operand, cycles + cycle_adjust))
 }
 
+struct RawOpcode {
+    opcode: Opcode,
+    addr_mode: AddressMode,
+    base_cycle_cost: u64,
+    encoding: u8,
+}
+
+const RAW_OPCODES: &[RawOpcode] = &[
+    RawOpcode {
+        opcode: Opcode::Adc,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0x69,
+    },
+    RawOpcode {
+        opcode: Opcode::Adc,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0x65,
+    },
+    RawOpcode {
+        opcode: Opcode::Adc,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0x75,
+    },
+    RawOpcode {
+        opcode: Opcode::Adc,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0x6D,
+    },
+    RawOpcode {
+        opcode: Opcode::Adc,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 4,
+        encoding: 0x7D,
+    },
+    RawOpcode {
+        opcode: Opcode::Adc,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 4,
+        encoding: 0x79,
+    },
+    RawOpcode {
+        opcode: Opcode::Adc,
+        addr_mode: AddressMode::IndirectX,
+        base_cycle_cost: 6,
+        encoding: 0x61,
+    },
+    RawOpcode {
+        opcode: Opcode::Adc,
+        addr_mode: AddressMode::IndirectY,
+        base_cycle_cost: 5,
+        encoding: 0x71,
+    },
+    // AND
+    RawOpcode {
+        opcode: Opcode::And,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0x29,
+    },
+    RawOpcode {
+        opcode: Opcode::And,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0x25,
+    },
+    RawOpcode {
+        opcode: Opcode::And,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0x35,
+    },
+    RawOpcode {
+        opcode: Opcode::And,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0x2D,
+    },
+    RawOpcode {
+        opcode: Opcode::And,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 4,
+        encoding: 0x3D,
+    },
+    RawOpcode {
+        opcode: Opcode::And,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 4,
+        encoding: 0x39,
+    },
+    RawOpcode {
+        opcode: Opcode::And,
+        addr_mode: AddressMode::IndirectX,
+        base_cycle_cost: 6,
+        encoding: 0x21,
+    },
+    RawOpcode {
+        opcode: Opcode::And,
+        addr_mode: AddressMode::IndirectY,
+        base_cycle_cost: 5,
+        encoding: 0x31,
+    },
+    // ASL
+    RawOpcode {
+        opcode: Opcode::Asl,
+        addr_mode: AddressMode::Accumulator,
+        base_cycle_cost: 2,
+        encoding: 0x0A,
+    },
+    RawOpcode {
+        opcode: Opcode::Asl,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 5,
+        encoding: 0x06,
+    },
+    RawOpcode {
+        opcode: Opcode::Asl,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 6,
+        encoding: 0x16,
+    },
+    RawOpcode {
+        opcode: Opcode::Asl,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 6,
+        encoding: 0x0E,
+    },
+    RawOpcode {
+        opcode: Opcode::Asl,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 7,
+        encoding: 0x1E,
+    },
+    // BCC
+    RawOpcode {
+        opcode: Opcode::Bcc,
+        addr_mode: AddressMode::Relative,
+        base_cycle_cost: 2,
+        encoding: 0x90,
+    },
+    // BCS
+    RawOpcode {
+        opcode: Opcode::Bcs,
+        addr_mode: AddressMode::Relative,
+        base_cycle_cost: 2,
+        encoding: 0xB0,
+    },
+    // BEQ
+    RawOpcode {
+        opcode: Opcode::Beq,
+        addr_mode: AddressMode::Relative,
+        base_cycle_cost: 2,
+        encoding: 0xF0,
+    },
+    // BIT
+    RawOpcode {
+        opcode: Opcode::Bit,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0x24,
+    },
+    RawOpcode {
+        opcode: Opcode::Bit,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0x2C,
+    },
+    // BMI
+    RawOpcode {
+        opcode: Opcode::Bmi,
+        addr_mode: AddressMode::Relative,
+        base_cycle_cost: 2,
+        encoding: 0x30,
+    },
+    // BNE
+    RawOpcode {
+        opcode: Opcode::Bne,
+        addr_mode: AddressMode::Relative,
+        base_cycle_cost: 2,
+        encoding: 0xD0,
+    },
+    // BPL
+    RawOpcode {
+        opcode: Opcode::Bpl,
+        addr_mode: AddressMode::Relative,
+        base_cycle_cost: 2,
+        encoding: 0x10,
+    },
+    // BRK
+    RawOpcode {
+        opcode: Opcode::Brk,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 7,
+        encoding: 0x00,
+    },
+    // BVC
+    RawOpcode {
+        opcode: Opcode::Bvc,
+        addr_mode: AddressMode::Relative,
+        base_cycle_cost: 2,
+        encoding: 0x50,
+    },
+    // BVS
+    RawOpcode {
+        opcode: Opcode::Bvs,
+        addr_mode: AddressMode::Relative,
+        base_cycle_cost: 2,
+        encoding: 0x70,
+    },
+    // CLC
+    RawOpcode {
+        opcode: Opcode::Clc,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0x18,
+    },
+    // CLD
+    RawOpcode {
+        opcode: Opcode::Cld,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xD8,
+    },
+    // CLI
+    RawOpcode {
+        opcode: Opcode::Cli,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0x58,
+    },
+    // CLV
+    RawOpcode {
+        opcode: Opcode::Clv,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xB8,
+    },
+    // CMP
+    RawOpcode {
+        opcode: Opcode::Cmp,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0xC9,
+    },
+    RawOpcode {
+        opcode: Opcode::Cmp,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0xC5,
+    },
+    RawOpcode {
+        opcode: Opcode::Cmp,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0xD5,
+    },
+    RawOpcode {
+        opcode: Opcode::Cmp,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0xCD,
+    },
+    RawOpcode {
+        opcode: Opcode::Cmp,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 4,
+        encoding: 0xDD,
+    },
+    RawOpcode {
+        opcode: Opcode::Cmp,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 4,
+        encoding: 0xD9,
+    },
+    RawOpcode {
+        opcode: Opcode::Cmp,
+        addr_mode: AddressMode::IndirectX,
+        base_cycle_cost: 6,
+        encoding: 0xC1,
+    },
+    RawOpcode {
+        opcode: Opcode::Cmp,
+        addr_mode: AddressMode::IndirectY,
+        base_cycle_cost: 5,
+        encoding: 0xD1,
+    },
+    // CPX
+    RawOpcode {
+        opcode: Opcode::Cpx,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0xE0,
+    },
+    RawOpcode {
+        opcode: Opcode::Cpx,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0xE4,
+    },
+    RawOpcode {
+        opcode: Opcode::Cpx,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0xEC,
+    },
+    // CPY
+    RawOpcode {
+        opcode: Opcode::Cpy,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0xC0,
+    },
+    RawOpcode {
+        opcode: Opcode::Cpy,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0xC4,
+    },
+    RawOpcode {
+        opcode: Opcode::Cpy,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0xCC,
+    },
+    // DEC
+    RawOpcode {
+        opcode: Opcode::Dec,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 5,
+        encoding: 0xC6,
+    },
+    RawOpcode {
+        opcode: Opcode::Dec,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 6,
+        encoding: 0xD6,
+    },
+    RawOpcode {
+        opcode: Opcode::Dec,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 6,
+        encoding: 0xCE,
+    },
+    RawOpcode {
+        opcode: Opcode::Dec,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 7,
+        encoding: 0xDE,
+    },
+    // DEX
+    RawOpcode {
+        opcode: Opcode::Dex,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xCA,
+    },
+    // DEY
+    RawOpcode {
+        opcode: Opcode::Dey,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0x88,
+    },
+    // EOR
+    RawOpcode {
+        opcode: Opcode::Eor,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0x49,
+    },
+    RawOpcode {
+        opcode: Opcode::Eor,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0x45,
+    },
+    RawOpcode {
+        opcode: Opcode::Eor,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0x55,
+    },
+    RawOpcode {
+        opcode: Opcode::Eor,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0x4D,
+    },
+    RawOpcode {
+        opcode: Opcode::Eor,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 4,
+        encoding: 0x5D,
+    },
+    RawOpcode {
+        opcode: Opcode::Eor,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 4,
+        encoding: 0x59,
+    },
+    RawOpcode {
+        opcode: Opcode::Eor,
+        addr_mode: AddressMode::IndirectX,
+        base_cycle_cost: 6,
+        encoding: 0x41,
+    },
+    RawOpcode {
+        opcode: Opcode::Eor,
+        addr_mode: AddressMode::IndirectY,
+        base_cycle_cost: 5,
+        encoding: 0x51,
+    },
+    // INC
+    RawOpcode {
+        opcode: Opcode::Inc,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 5,
+        encoding: 0xE6,
+    },
+    RawOpcode {
+        opcode: Opcode::Inc,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 6,
+        encoding: 0xF6,
+    },
+    RawOpcode {
+        opcode: Opcode::Inc,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 6,
+        encoding: 0xEE,
+    },
+    RawOpcode {
+        opcode: Opcode::Inc,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 7,
+        encoding: 0xFE,
+    },
+    // INX
+    RawOpcode {
+        opcode: Opcode::Inx,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xE8,
+    },
+    // INY
+    RawOpcode {
+        opcode: Opcode::Iny,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xC8,
+    },
+    // JMP
+    RawOpcode {
+        opcode: Opcode::Jmp,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 3,
+        encoding: 0x4C,
+    },
+    RawOpcode {
+        opcode: Opcode::Jmp,
+        addr_mode: AddressMode::Indirect,
+        base_cycle_cost: 5,
+        encoding: 0x6C,
+    },
+    // JSR
+    RawOpcode {
+        opcode: Opcode::Jsr,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 6,
+        encoding: 0x20,
+    },
+    // LDA
+    RawOpcode {
+        opcode: Opcode::Lda,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0xA9,
+    },
+    RawOpcode {
+        opcode: Opcode::Lda,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0xA5,
+    },
+    RawOpcode {
+        opcode: Opcode::Lda,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0xB5,
+    },
+    RawOpcode {
+        opcode: Opcode::Lda,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0xAD,
+    },
+    RawOpcode {
+        opcode: Opcode::Lda,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 4,
+        encoding: 0xBD,
+    },
+    RawOpcode {
+        opcode: Opcode::Lda,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 4,
+        encoding: 0xB9,
+    },
+    RawOpcode {
+        opcode: Opcode::Lda,
+        addr_mode: AddressMode::IndirectX,
+        base_cycle_cost: 6,
+        encoding: 0xA1,
+    },
+    RawOpcode {
+        opcode: Opcode::Lda,
+        addr_mode: AddressMode::IndirectY,
+        base_cycle_cost: 5,
+        encoding: 0xB1,
+    },
+    // LDX
+    RawOpcode {
+        opcode: Opcode::Ldx,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0xA2,
+    },
+    RawOpcode {
+        opcode: Opcode::Ldx,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0xA6,
+    },
+    RawOpcode {
+        opcode: Opcode::Ldx,
+        addr_mode: AddressMode::ZeroPageY,
+        base_cycle_cost: 4,
+        encoding: 0xB6,
+    },
+    RawOpcode {
+        opcode: Opcode::Ldx,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0xAE,
+    },
+    RawOpcode {
+        opcode: Opcode::Ldx,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 4,
+        encoding: 0xBE,
+    },
+    // LDY
+    RawOpcode {
+        opcode: Opcode::Ldy,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0xA0,
+    },
+    RawOpcode {
+        opcode: Opcode::Ldy,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0xA4,
+    },
+    RawOpcode {
+        opcode: Opcode::Ldy,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0xB4,
+    },
+    RawOpcode {
+        opcode: Opcode::Ldy,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0xAC,
+    },
+    RawOpcode {
+        opcode: Opcode::Ldy,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 4,
+        encoding: 0xBC,
+    },
+    // LSR
+    RawOpcode {
+        opcode: Opcode::Lsr,
+        addr_mode: AddressMode::Accumulator,
+        base_cycle_cost: 2,
+        encoding: 0x4A,
+    },
+    RawOpcode {
+        opcode: Opcode::Lsr,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 5,
+        encoding: 0x46,
+    },
+    RawOpcode {
+        opcode: Opcode::Lsr,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 6,
+        encoding: 0x56,
+    },
+    RawOpcode {
+        opcode: Opcode::Lsr,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 6,
+        encoding: 0x4E,
+    },
+    RawOpcode {
+        opcode: Opcode::Lsr,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 7,
+        encoding: 0x5E,
+    },
+    // NOP
+    RawOpcode {
+        opcode: Opcode::Nop,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xEA,
+    },
+    // ORA
+    RawOpcode {
+        opcode: Opcode::Ora,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0x09,
+    },
+    RawOpcode {
+        opcode: Opcode::Ora,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0x05,
+    },
+    RawOpcode {
+        opcode: Opcode::Ora,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0x15,
+    },
+    RawOpcode {
+        opcode: Opcode::Ora,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0x0D,
+    },
+    RawOpcode {
+        opcode: Opcode::Ora,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 4,
+        encoding: 0x1D,
+    },
+    RawOpcode {
+        opcode: Opcode::Ora,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 4,
+        encoding: 0x19,
+    },
+    RawOpcode {
+        opcode: Opcode::Ora,
+        addr_mode: AddressMode::IndirectX,
+        base_cycle_cost: 6,
+        encoding: 0x01,
+    },
+    RawOpcode {
+        opcode: Opcode::Ora,
+        addr_mode: AddressMode::IndirectY,
+        base_cycle_cost: 5,
+        encoding: 0x11,
+    },
+    // PHA
+    RawOpcode {
+        opcode: Opcode::Pha,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 3,
+        encoding: 0x48,
+    },
+    // PHP
+    RawOpcode {
+        opcode: Opcode::Php,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 3,
+        encoding: 0x08,
+    },
+    // PLA
+    RawOpcode {
+        opcode: Opcode::Pla,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 4,
+        encoding: 0x68,
+    },
+    // PLP
+    RawOpcode {
+        opcode: Opcode::Plp,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 4,
+        encoding: 0x28,
+    },
+    // ROL
+    RawOpcode {
+        opcode: Opcode::Rol,
+        addr_mode: AddressMode::Accumulator,
+        base_cycle_cost: 2,
+        encoding: 0x2A,
+    },
+    RawOpcode {
+        opcode: Opcode::Rol,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 5,
+        encoding: 0x26,
+    },
+    RawOpcode {
+        opcode: Opcode::Rol,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 6,
+        encoding: 0x36,
+    },
+    RawOpcode {
+        opcode: Opcode::Rol,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 6,
+        encoding: 0x2E,
+    },
+    RawOpcode {
+        opcode: Opcode::Rol,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 7,
+        encoding: 0x3E,
+    },
+    // ROR
+    RawOpcode {
+        opcode: Opcode::Ror,
+        addr_mode: AddressMode::Accumulator,
+        base_cycle_cost: 2,
+        encoding: 0x6A,
+    },
+    RawOpcode {
+        opcode: Opcode::Ror,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 5,
+        encoding: 0x66,
+    },
+    RawOpcode {
+        opcode: Opcode::Ror,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 6,
+        encoding: 0x76,
+    },
+    RawOpcode {
+        opcode: Opcode::Ror,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 6,
+        encoding: 0x6E,
+    },
+    RawOpcode {
+        opcode: Opcode::Ror,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 7,
+        encoding: 0x7E,
+    },
+    // RTI
+    RawOpcode {
+        opcode: Opcode::Rti,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 6,
+        encoding: 0x40,
+    },
+    // RTS
+    RawOpcode {
+        opcode: Opcode::Rts,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 6,
+        encoding: 0x60,
+    },
+    // SBC
+    RawOpcode {
+        opcode: Opcode::Sbc,
+        addr_mode: AddressMode::Immediate,
+        base_cycle_cost: 2,
+        encoding: 0xE9,
+    },
+    RawOpcode {
+        opcode: Opcode::Sbc,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0xE5,
+    },
+    RawOpcode {
+        opcode: Opcode::Sbc,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0xF5,
+    },
+    RawOpcode {
+        opcode: Opcode::Sbc,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0xED,
+    },
+    RawOpcode {
+        opcode: Opcode::Sbc,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 4,
+        encoding: 0xFD,
+    },
+    RawOpcode {
+        opcode: Opcode::Sbc,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 4,
+        encoding: 0xF9,
+    },
+    RawOpcode {
+        opcode: Opcode::Sbc,
+        addr_mode: AddressMode::IndirectX,
+        base_cycle_cost: 6,
+        encoding: 0xE1,
+    },
+    RawOpcode {
+        opcode: Opcode::Sbc,
+        addr_mode: AddressMode::IndirectY,
+        base_cycle_cost: 5,
+        encoding: 0xF1,
+    },
+    // SEC
+    RawOpcode {
+        opcode: Opcode::Sec,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0x38,
+    },
+    // SED
+    RawOpcode {
+        opcode: Opcode::Sed,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xF8,
+    },
+    // SEI
+    RawOpcode {
+        opcode: Opcode::Sei,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0x78,
+    },
+    // STA
+    RawOpcode {
+        opcode: Opcode::Sta,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0x85,
+    },
+    RawOpcode {
+        opcode: Opcode::Sta,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0x95,
+    },
+    RawOpcode {
+        opcode: Opcode::Sta,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0x8D,
+    },
+    RawOpcode {
+        opcode: Opcode::Sta,
+        addr_mode: AddressMode::AbsoluteX,
+        base_cycle_cost: 5,
+        encoding: 0x9D,
+    },
+    RawOpcode {
+        opcode: Opcode::Sta,
+        addr_mode: AddressMode::AbsoluteY,
+        base_cycle_cost: 5,
+        encoding: 0x99,
+    },
+    RawOpcode {
+        opcode: Opcode::Sta,
+        addr_mode: AddressMode::IndirectX,
+        base_cycle_cost: 6,
+        encoding: 0x81,
+    },
+    RawOpcode {
+        opcode: Opcode::Sta,
+        addr_mode: AddressMode::IndirectY,
+        base_cycle_cost: 6,
+        encoding: 0x91,
+    },
+    // STX
+    RawOpcode {
+        opcode: Opcode::Stx,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0x86,
+    },
+    RawOpcode {
+        opcode: Opcode::Stx,
+        addr_mode: AddressMode::ZeroPageY,
+        base_cycle_cost: 4,
+        encoding: 0x96,
+    },
+    RawOpcode {
+        opcode: Opcode::Stx,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0x8E,
+    },
+    // STY
+    RawOpcode {
+        opcode: Opcode::Sty,
+        addr_mode: AddressMode::ZeroPage,
+        base_cycle_cost: 3,
+        encoding: 0x84,
+    },
+    RawOpcode {
+        opcode: Opcode::Sty,
+        addr_mode: AddressMode::ZeroPageX,
+        base_cycle_cost: 4,
+        encoding: 0x94,
+    },
+    RawOpcode {
+        opcode: Opcode::Sty,
+        addr_mode: AddressMode::Absolute,
+        base_cycle_cost: 4,
+        encoding: 0x8C,
+    },
+    // TAX
+    RawOpcode {
+        opcode: Opcode::Tax,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xAA,
+    },
+    // TAY
+    RawOpcode {
+        opcode: Opcode::Tay,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xA8,
+    },
+    // TSX
+    RawOpcode {
+        opcode: Opcode::Tsx,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0xBA,
+    },
+    // TXA
+    RawOpcode {
+        opcode: Opcode::Txa,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0x8A,
+    },
+    // TXS
+    RawOpcode {
+        opcode: Opcode::Txs,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0x9A,
+    },
+    // TYA
+    RawOpcode {
+        opcode: Opcode::Tya,
+        addr_mode: AddressMode::Implicit,
+        base_cycle_cost: 2,
+        encoding: 0x98,
+    },
+];
+
 /// Takes a encoded opcode and converts it to a tuple containing the opcode,
 /// addressing mode, and base cycle cost.
 ///
 /// Reference: obelisk.me.uk/6502/reference.html
 fn decode_raw_opcode(raw_opcode: u8) -> Option<(Opcode, AddressMode, u64)> {
-    match raw_opcode {
-        // ADC
-        0x69 => Some((Opcode::Adc, AddressMode::Immediate, 2)),
-        0x65 => Some((Opcode::Adc, AddressMode::ZeroPage, 3)),
-        0x75 => Some((Opcode::Adc, AddressMode::ZeroPageX, 4)),
-        0x6D => Some((Opcode::Adc, AddressMode::Absolute, 4)),
-        0x7D => Some((Opcode::Adc, AddressMode::AbsoluteX, 4)),
-        0x79 => Some((Opcode::Adc, AddressMode::AbsoluteY, 4)),
-        0x61 => Some((Opcode::Adc, AddressMode::IndirectX, 6)),
-        0x71 => Some((Opcode::Adc, AddressMode::IndirectY, 5)),
-
-        // AND
-        0x29 => Some((Opcode::And, AddressMode::Immediate, 2)),
-        0x25 => Some((Opcode::And, AddressMode::ZeroPage, 3)),
-        0x35 => Some((Opcode::And, AddressMode::ZeroPageX, 4)),
-        0x2D => Some((Opcode::And, AddressMode::Absolute, 4)),
-        0x3D => Some((Opcode::And, AddressMode::AbsoluteX, 4)),
-        0x39 => Some((Opcode::And, AddressMode::AbsoluteY, 4)),
-        0x21 => Some((Opcode::And, AddressMode::IndirectX, 6)),
-        0x31 => Some((Opcode::And, AddressMode::IndirectY, 5)),
-
-        // ASL
-        0x0A => Some((Opcode::Asl, AddressMode::Accumulator, 2)),
-        0x06 => Some((Opcode::Asl, AddressMode::ZeroPage, 5)),
-        0x16 => Some((Opcode::Asl, AddressMode::ZeroPageX, 6)),
-        0x0E => Some((Opcode::Asl, AddressMode::Absolute, 6)),
-        0x1E => Some((Opcode::Asl, AddressMode::AbsoluteX, 7)),
-
-        // BCC
-        0x90 => Some((Opcode::Bcc, AddressMode::Relative, 2)),
-
-        // BCS
-        0xB0 => Some((Opcode::Bcs, AddressMode::Relative, 2)),
-
-        // BEQ
-        0xF0 => Some((Opcode::Beq, AddressMode::Relative, 2)),
-
-        // BIT
-        0x24 => Some((Opcode::Bit, AddressMode::ZeroPage, 3)),
-        0x2C => Some((Opcode::Bit, AddressMode::Absolute, 4)),
-
-        // BMI
-        0x30 => Some((Opcode::Bmi, AddressMode::Relative, 2)),
-
-        // BNE
-        0xD0 => Some((Opcode::Bne, AddressMode::Relative, 2)),
-
-        // BPL
-        0x10 => Some((Opcode::Bpl, AddressMode::Relative, 2)),
-
-        // BRK
-        0x00 => Some((Opcode::Brk, AddressMode::Implicit, 7)),
-
-        // BVC
-        0x50 => Some((Opcode::Bvc, AddressMode::Relative, 2)),
-
-        // BVS
-        0x70 => Some((Opcode::Bvs, AddressMode::Relative, 2)),
-
-        // CLC
-        0x18 => Some((Opcode::Clc, AddressMode::Implicit, 2)),
-
-        // CLD
-        0xD8 => Some((Opcode::Cld, AddressMode::Implicit, 2)),
-
-        // CLI
-        0x58 => Some((Opcode::Cli, AddressMode::Implicit, 2)),
-
-        // CLV
-        0xB8 => Some((Opcode::Clv, AddressMode::Implicit, 2)),
-
-        // CMP
-        0xC9 => Some((Opcode::Cmp, AddressMode::Immediate, 2)),
-        0xC5 => Some((Opcode::Cmp, AddressMode::ZeroPage, 3)),
-        0xD5 => Some((Opcode::Cmp, AddressMode::ZeroPageX, 4)),
-        0xCD => Some((Opcode::Cmp, AddressMode::Absolute, 4)),
-        0xDD => Some((Opcode::Cmp, AddressMode::AbsoluteX, 4)),
-        0xD9 => Some((Opcode::Cmp, AddressMode::AbsoluteY, 4)),
-        0xC1 => Some((Opcode::Cmp, AddressMode::IndirectX, 6)),
-        0xD1 => Some((Opcode::Cmp, AddressMode::IndirectY, 5)),
-
-        // CPX
-        0xE0 => Some((Opcode::Cpx, AddressMode::Immediate, 2)),
-        0xE4 => Some((Opcode::Cpx, AddressMode::ZeroPage, 3)),
-        0xEC => Some((Opcode::Cpx, AddressMode::Absolute, 4)),
-
-        // CPY
-        0xC0 => Some((Opcode::Cpy, AddressMode::Immediate, 2)),
-        0xC4 => Some((Opcode::Cpy, AddressMode::ZeroPage, 3)),
-        0xCC => Some((Opcode::Cpy, AddressMode::Absolute, 4)),
-
-        // DEC
-        0xC6 => Some((Opcode::Dec, AddressMode::ZeroPage, 5)),
-        0xD6 => Some((Opcode::Dec, AddressMode::ZeroPageX, 6)),
-        0xCE => Some((Opcode::Dec, AddressMode::Absolute, 6)),
-        0xDE => Some((Opcode::Dec, AddressMode::AbsoluteX, 7)),
-
-        // DEX
-        0xCA => Some((Opcode::Dex, AddressMode::Implicit, 2)),
-
-        // DEY
-        0x88 => Some((Opcode::Dey, AddressMode::Implicit, 2)),
-
-        // EOR
-        0x49 => Some((Opcode::Eor, AddressMode::Immediate, 2)),
-        0x45 => Some((Opcode::Eor, AddressMode::ZeroPage, 3)),
-        0x55 => Some((Opcode::Eor, AddressMode::ZeroPageX, 4)),
-        0x4D => Some((Opcode::Eor, AddressMode::Absolute, 4)),
-        0x5D => Some((Opcode::Eor, AddressMode::AbsoluteX, 4)),
-        0x59 => Some((Opcode::Eor, AddressMode::AbsoluteY, 4)),
-        0x41 => Some((Opcode::Eor, AddressMode::IndirectX, 6)),
-        0x51 => Some((Opcode::Eor, AddressMode::IndirectY, 5)),
-
-        // INC
-        0xE6 => Some((Opcode::Inc, AddressMode::ZeroPage, 5)),
-        0xF6 => Some((Opcode::Inc, AddressMode::ZeroPageX, 6)),
-        0xEE => Some((Opcode::Inc, AddressMode::Absolute, 6)),
-        0xFE => Some((Opcode::Inc, AddressMode::AbsoluteX, 7)),
-
-        // INX
-        0xE8 => Some((Opcode::Inx, AddressMode::Implicit, 2)),
-
-        // INY
-        0xC8 => Some((Opcode::Iny, AddressMode::Implicit, 2)),
-
-        // JMP
-        0x4C => Some((Opcode::Jmp, AddressMode::Absolute, 3)),
-        0x6C => Some((Opcode::Jmp, AddressMode::Indirect, 5)),
-
-        // JSR
-        0x20 => Some((Opcode::Jsr, AddressMode::Absolute, 6)),
-
-        // LDA
-        0xA9 => Some((Opcode::Lda, AddressMode::Immediate, 2)),
-        0xA5 => Some((Opcode::Lda, AddressMode::ZeroPage, 3)),
-        0xB5 => Some((Opcode::Lda, AddressMode::ZeroPageX, 4)),
-        0xAD => Some((Opcode::Lda, AddressMode::Absolute, 4)),
-        0xBD => Some((Opcode::Lda, AddressMode::AbsoluteX, 4)),
-        0xB9 => Some((Opcode::Lda, AddressMode::AbsoluteY, 4)),
-        0xA1 => Some((Opcode::Lda, AddressMode::IndirectX, 6)),
-        0xB1 => Some((Opcode::Lda, AddressMode::IndirectY, 5)),
-
-        // LDX
-        0xA2 => Some((Opcode::Ldx, AddressMode::Immediate, 2)),
-        0xA6 => Some((Opcode::Ldx, AddressMode::ZeroPage, 3)),
-        0xB6 => Some((Opcode::Ldx, AddressMode::ZeroPageY, 4)),
-        0xAE => Some((Opcode::Ldx, AddressMode::Absolute, 4)),
-        0xBE => Some((Opcode::Ldx, AddressMode::AbsoluteY, 4)),
-
-        // LDY
-        0xA0 => Some((Opcode::Ldy, AddressMode::Immediate, 2)),
-        0xA4 => Some((Opcode::Ldy, AddressMode::ZeroPage, 3)),
-        0xB4 => Some((Opcode::Ldy, AddressMode::ZeroPageX, 4)),
-        0xAC => Some((Opcode::Ldy, AddressMode::Absolute, 4)),
-        0xBC => Some((Opcode::Ldy, AddressMode::AbsoluteX, 4)),
-
-        // LSR
-        0x4A => Some((Opcode::Lsr, AddressMode::Accumulator, 2)),
-        0x46 => Some((Opcode::Lsr, AddressMode::ZeroPage, 5)),
-        0x56 => Some((Opcode::Lsr, AddressMode::ZeroPageX, 6)),
-        0x4E => Some((Opcode::Lsr, AddressMode::Absolute, 6)),
-        0x5E => Some((Opcode::Lsr, AddressMode::AbsoluteX, 7)),
-
-        // NOP
-        0xEA => Some((Opcode::Nop, AddressMode::Implicit, 2)),
-
-        // ORA
-        0x09 => Some((Opcode::Ora, AddressMode::Immediate, 2)),
-        0x05 => Some((Opcode::Ora, AddressMode::ZeroPage, 3)),
-        0x15 => Some((Opcode::Ora, AddressMode::ZeroPageX, 4)),
-        0x0D => Some((Opcode::Ora, AddressMode::Absolute, 4)),
-        0x1D => Some((Opcode::Ora, AddressMode::AbsoluteX, 4)),
-        0x19 => Some((Opcode::Ora, AddressMode::AbsoluteY, 4)),
-        0x01 => Some((Opcode::Ora, AddressMode::IndirectX, 6)),
-        0x11 => Some((Opcode::Ora, AddressMode::IndirectY, 5)),
-
-        // PHA
-        0x48 => Some((Opcode::Pha, AddressMode::Implicit, 3)),
-
-        // PHP
-        0x08 => Some((Opcode::Php, AddressMode::Implicit, 3)),
-
-        // PLA
-        0x68 => Some((Opcode::Pla, AddressMode::Implicit, 4)),
-
-        // PLP
-        0x28 => Some((Opcode::Plp, AddressMode::Implicit, 4)),
-
-        // ROL
-        0x2A => Some((Opcode::Rol, AddressMode::Accumulator, 2)),
-        0x26 => Some((Opcode::Rol, AddressMode::ZeroPage, 5)),
-        0x36 => Some((Opcode::Rol, AddressMode::ZeroPageX, 6)),
-        0x2E => Some((Opcode::Rol, AddressMode::Absolute, 6)),
-        0x3E => Some((Opcode::Rol, AddressMode::AbsoluteX, 7)),
-
-        // ROR
-        0x6A => Some((Opcode::Ror, AddressMode::Accumulator, 2)),
-        0x66 => Some((Opcode::Ror, AddressMode::ZeroPage, 5)),
-        0x76 => Some((Opcode::Ror, AddressMode::ZeroPageX, 6)),
-        0x6E => Some((Opcode::Ror, AddressMode::Absolute, 6)),
-        0x7E => Some((Opcode::Ror, AddressMode::AbsoluteX, 7)),
-
-        // RTI
-        0x40 => Some((Opcode::Rti, AddressMode::Implicit, 6)),
-
-        // RTS
-        0x60 => Some((Opcode::Rts, AddressMode::Implicit, 6)),
-
-        // SBC
-        0xE9 => Some((Opcode::Sbc, AddressMode::Immediate, 2)),
-        0xE5 => Some((Opcode::Sbc, AddressMode::ZeroPage, 3)),
-        0xF5 => Some((Opcode::Sbc, AddressMode::ZeroPageX, 4)),
-        0xED => Some((Opcode::Sbc, AddressMode::Absolute, 4)),
-        0xFD => Some((Opcode::Sbc, AddressMode::AbsoluteX, 4)),
-        0xF9 => Some((Opcode::Sbc, AddressMode::AbsoluteY, 4)),
-        0xE1 => Some((Opcode::Sbc, AddressMode::IndirectX, 6)),
-        0xF1 => Some((Opcode::Sbc, AddressMode::IndirectY, 5)),
-
-        // SEC
-        0x38 => Some((Opcode::Sec, AddressMode::Implicit, 2)),
-
-        // SED
-        0xF8 => Some((Opcode::Sed, AddressMode::Implicit, 2)),
-
-        // SEI
-        0x78 => Some((Opcode::Sei, AddressMode::Implicit, 2)),
-
-        // STA
-        0x85 => Some((Opcode::Sta, AddressMode::ZeroPage, 3)),
-        0x95 => Some((Opcode::Sta, AddressMode::ZeroPageX, 4)),
-        0x8D => Some((Opcode::Sta, AddressMode::Absolute, 4)),
-        0x9D => Some((Opcode::Sta, AddressMode::AbsoluteX, 5)),
-        0x99 => Some((Opcode::Sta, AddressMode::AbsoluteY, 5)),
-        0x81 => Some((Opcode::Sta, AddressMode::IndirectX, 6)),
-        0x91 => Some((Opcode::Sta, AddressMode::IndirectY, 6)),
-
-        // STX
-        0x86 => Some((Opcode::Stx, AddressMode::ZeroPage, 3)),
-        0x96 => Some((Opcode::Stx, AddressMode::ZeroPageY, 4)),
-        0x8E => Some((Opcode::Stx, AddressMode::Absolute, 4)),
-
-        // STY
-        0x84 => Some((Opcode::Sty, AddressMode::ZeroPage, 3)),
-        0x94 => Some((Opcode::Sty, AddressMode::ZeroPageX, 4)),
-        0x8C => Some((Opcode::Sty, AddressMode::Absolute, 4)),
-
-        // TAX
-        0xAA => Some((Opcode::Tax, AddressMode::Implicit, 2)),
-
-        // TAY
-        0xA8 => Some((Opcode::Tay, AddressMode::Implicit, 2)),
-
-        // TSX
-        0xBA => Some((Opcode::Tsx, AddressMode::Implicit, 2)),
-
-        // TXA
-        0x8A => Some((Opcode::Txa, AddressMode::Implicit, 2)),
-
-        // TXS
-        0x9A => Some((Opcode::Txs, AddressMode::Implicit, 2)),
-
-        // TYA
-        0x98 => Some((Opcode::Tya, AddressMode::Implicit, 2)),
-
-        _ => None,
+    lazy_static! {
+        static ref OPCODES_BY_ENCODING: [Option<(Opcode, AddressMode, u64)>; 256] = {
+            let mut opcodes = [None; 256];
+            for raw in RAW_OPCODES.iter() {
+                opcodes[raw.encoding as usize] =
+                    Some((raw.opcode, raw.addr_mode, raw.base_cycle_cost));
+            }
+            opcodes
+        };
     }
+
+    OPCODES_BY_ENCODING[raw_opcode as usize]
 }
 
 // Consumes bytes from the instruction "segment" to calculate an operand value,
