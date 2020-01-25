@@ -1,5 +1,5 @@
 use super::address_mode::AddressMode;
-use super::opcode::Opcode;
+use super::opcode;
 use super::operand::Operand;
 use super::state::Cpu;
 use crate::math;
@@ -7,977 +7,978 @@ use crate::math;
 /// Decodes the instruction at the PC and returns a tuple containing the opcode,
 /// operand, and base cycle cost. The PC will be incremented to the start of the
 /// next instruction.
-pub fn decode(cpu: &mut Cpu) -> Option<(Opcode, Operand, u64)> {
-    let (opcode, addr_mode, cycles) = decode_raw_opcode(cpu.consume_instruction_byte())?;
-    let (operand, cycle_adjust) = decode_operand(cpu, opcode, addr_mode);
-    Some((opcode, operand, cycles + cycle_adjust))
+pub fn decode(cpu: &mut Cpu) -> Option<(opcode::Type, Operand, u64)> {
+    let (opcode_type, addr_mode, cycles) = decode_raw_opcode(cpu.consume_instruction_byte())?;
+    let (operand, cycle_adjust) = decode_operand(cpu, opcode_type, addr_mode);
+    Some((opcode_type, operand, cycles + cycle_adjust))
 }
 
-struct RawOpcode {
-    opcode: Opcode,
+struct Opcode {
+    opcode_type: opcode::Type,
     addr_mode: AddressMode,
     base_cycle_cost: u64,
     encoding: u8,
 }
 
-const RAW_OPCODES: &[RawOpcode] = &[
-    RawOpcode {
-        opcode: Opcode::Adc,
+const RAW_OPCODES: &[Opcode] = &[
+    // ADC
+    Opcode {
+        opcode_type: opcode::Type::Adc,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0x69,
     },
-    RawOpcode {
-        opcode: Opcode::Adc,
+    Opcode {
+        opcode_type: opcode::Type::Adc,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0x65,
     },
-    RawOpcode {
-        opcode: Opcode::Adc,
+    Opcode {
+        opcode_type: opcode::Type::Adc,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0x75,
     },
-    RawOpcode {
-        opcode: Opcode::Adc,
+    Opcode {
+        opcode_type: opcode::Type::Adc,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0x6D,
     },
-    RawOpcode {
-        opcode: Opcode::Adc,
+    Opcode {
+        opcode_type: opcode::Type::Adc,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 4,
         encoding: 0x7D,
     },
-    RawOpcode {
-        opcode: Opcode::Adc,
+    Opcode {
+        opcode_type: opcode::Type::Adc,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 4,
         encoding: 0x79,
     },
-    RawOpcode {
-        opcode: Opcode::Adc,
+    Opcode {
+        opcode_type: opcode::Type::Adc,
         addr_mode: AddressMode::IndirectX,
         base_cycle_cost: 6,
         encoding: 0x61,
     },
-    RawOpcode {
-        opcode: Opcode::Adc,
+    Opcode {
+        opcode_type: opcode::Type::Adc,
         addr_mode: AddressMode::IndirectY,
         base_cycle_cost: 5,
         encoding: 0x71,
     },
     // AND
-    RawOpcode {
-        opcode: Opcode::And,
+    Opcode {
+        opcode_type: opcode::Type::And,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0x29,
     },
-    RawOpcode {
-        opcode: Opcode::And,
+    Opcode {
+        opcode_type: opcode::Type::And,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0x25,
     },
-    RawOpcode {
-        opcode: Opcode::And,
+    Opcode {
+        opcode_type: opcode::Type::And,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0x35,
     },
-    RawOpcode {
-        opcode: Opcode::And,
+    Opcode {
+        opcode_type: opcode::Type::And,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0x2D,
     },
-    RawOpcode {
-        opcode: Opcode::And,
+    Opcode {
+        opcode_type: opcode::Type::And,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 4,
         encoding: 0x3D,
     },
-    RawOpcode {
-        opcode: Opcode::And,
+    Opcode {
+        opcode_type: opcode::Type::And,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 4,
         encoding: 0x39,
     },
-    RawOpcode {
-        opcode: Opcode::And,
+    Opcode {
+        opcode_type: opcode::Type::And,
         addr_mode: AddressMode::IndirectX,
         base_cycle_cost: 6,
         encoding: 0x21,
     },
-    RawOpcode {
-        opcode: Opcode::And,
+    Opcode {
+        opcode_type: opcode::Type::And,
         addr_mode: AddressMode::IndirectY,
         base_cycle_cost: 5,
         encoding: 0x31,
     },
     // ASL
-    RawOpcode {
-        opcode: Opcode::Asl,
+    Opcode {
+        opcode_type: opcode::Type::Asl,
         addr_mode: AddressMode::Accumulator,
         base_cycle_cost: 2,
         encoding: 0x0A,
     },
-    RawOpcode {
-        opcode: Opcode::Asl,
+    Opcode {
+        opcode_type: opcode::Type::Asl,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 5,
         encoding: 0x06,
     },
-    RawOpcode {
-        opcode: Opcode::Asl,
+    Opcode {
+        opcode_type: opcode::Type::Asl,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 6,
         encoding: 0x16,
     },
-    RawOpcode {
-        opcode: Opcode::Asl,
+    Opcode {
+        opcode_type: opcode::Type::Asl,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 6,
         encoding: 0x0E,
     },
-    RawOpcode {
-        opcode: Opcode::Asl,
+    Opcode {
+        opcode_type: opcode::Type::Asl,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 7,
         encoding: 0x1E,
     },
     // BCC
-    RawOpcode {
-        opcode: Opcode::Bcc,
+    Opcode {
+        opcode_type: opcode::Type::Bcc,
         addr_mode: AddressMode::Relative,
         base_cycle_cost: 2,
         encoding: 0x90,
     },
     // BCS
-    RawOpcode {
-        opcode: Opcode::Bcs,
+    Opcode {
+        opcode_type: opcode::Type::Bcs,
         addr_mode: AddressMode::Relative,
         base_cycle_cost: 2,
         encoding: 0xB0,
     },
     // BEQ
-    RawOpcode {
-        opcode: Opcode::Beq,
+    Opcode {
+        opcode_type: opcode::Type::Beq,
         addr_mode: AddressMode::Relative,
         base_cycle_cost: 2,
         encoding: 0xF0,
     },
     // BIT
-    RawOpcode {
-        opcode: Opcode::Bit,
+    Opcode {
+        opcode_type: opcode::Type::Bit,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0x24,
     },
-    RawOpcode {
-        opcode: Opcode::Bit,
+    Opcode {
+        opcode_type: opcode::Type::Bit,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0x2C,
     },
     // BMI
-    RawOpcode {
-        opcode: Opcode::Bmi,
+    Opcode {
+        opcode_type: opcode::Type::Bmi,
         addr_mode: AddressMode::Relative,
         base_cycle_cost: 2,
         encoding: 0x30,
     },
     // BNE
-    RawOpcode {
-        opcode: Opcode::Bne,
+    Opcode {
+        opcode_type: opcode::Type::Bne,
         addr_mode: AddressMode::Relative,
         base_cycle_cost: 2,
         encoding: 0xD0,
     },
     // BPL
-    RawOpcode {
-        opcode: Opcode::Bpl,
+    Opcode {
+        opcode_type: opcode::Type::Bpl,
         addr_mode: AddressMode::Relative,
         base_cycle_cost: 2,
         encoding: 0x10,
     },
     // BRK
-    RawOpcode {
-        opcode: Opcode::Brk,
+    Opcode {
+        opcode_type: opcode::Type::Brk,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 7,
         encoding: 0x00,
     },
     // BVC
-    RawOpcode {
-        opcode: Opcode::Bvc,
+    Opcode {
+        opcode_type: opcode::Type::Bvc,
         addr_mode: AddressMode::Relative,
         base_cycle_cost: 2,
         encoding: 0x50,
     },
     // BVS
-    RawOpcode {
-        opcode: Opcode::Bvs,
+    Opcode {
+        opcode_type: opcode::Type::Bvs,
         addr_mode: AddressMode::Relative,
         base_cycle_cost: 2,
         encoding: 0x70,
     },
     // CLC
-    RawOpcode {
-        opcode: Opcode::Clc,
+    Opcode {
+        opcode_type: opcode::Type::Clc,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0x18,
     },
     // CLD
-    RawOpcode {
-        opcode: Opcode::Cld,
+    Opcode {
+        opcode_type: opcode::Type::Cld,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xD8,
     },
     // CLI
-    RawOpcode {
-        opcode: Opcode::Cli,
+    Opcode {
+        opcode_type: opcode::Type::Cli,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0x58,
     },
     // CLV
-    RawOpcode {
-        opcode: Opcode::Clv,
+    Opcode {
+        opcode_type: opcode::Type::Clv,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xB8,
     },
     // CMP
-    RawOpcode {
-        opcode: Opcode::Cmp,
+    Opcode {
+        opcode_type: opcode::Type::Cmp,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0xC9,
     },
-    RawOpcode {
-        opcode: Opcode::Cmp,
+    Opcode {
+        opcode_type: opcode::Type::Cmp,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0xC5,
     },
-    RawOpcode {
-        opcode: Opcode::Cmp,
+    Opcode {
+        opcode_type: opcode::Type::Cmp,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0xD5,
     },
-    RawOpcode {
-        opcode: Opcode::Cmp,
+    Opcode {
+        opcode_type: opcode::Type::Cmp,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0xCD,
     },
-    RawOpcode {
-        opcode: Opcode::Cmp,
+    Opcode {
+        opcode_type: opcode::Type::Cmp,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 4,
         encoding: 0xDD,
     },
-    RawOpcode {
-        opcode: Opcode::Cmp,
+    Opcode {
+        opcode_type: opcode::Type::Cmp,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 4,
         encoding: 0xD9,
     },
-    RawOpcode {
-        opcode: Opcode::Cmp,
+    Opcode {
+        opcode_type: opcode::Type::Cmp,
         addr_mode: AddressMode::IndirectX,
         base_cycle_cost: 6,
         encoding: 0xC1,
     },
-    RawOpcode {
-        opcode: Opcode::Cmp,
+    Opcode {
+        opcode_type: opcode::Type::Cmp,
         addr_mode: AddressMode::IndirectY,
         base_cycle_cost: 5,
         encoding: 0xD1,
     },
     // CPX
-    RawOpcode {
-        opcode: Opcode::Cpx,
+    Opcode {
+        opcode_type: opcode::Type::Cpx,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0xE0,
     },
-    RawOpcode {
-        opcode: Opcode::Cpx,
+    Opcode {
+        opcode_type: opcode::Type::Cpx,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0xE4,
     },
-    RawOpcode {
-        opcode: Opcode::Cpx,
+    Opcode {
+        opcode_type: opcode::Type::Cpx,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0xEC,
     },
     // CPY
-    RawOpcode {
-        opcode: Opcode::Cpy,
+    Opcode {
+        opcode_type: opcode::Type::Cpy,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0xC0,
     },
-    RawOpcode {
-        opcode: Opcode::Cpy,
+    Opcode {
+        opcode_type: opcode::Type::Cpy,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0xC4,
     },
-    RawOpcode {
-        opcode: Opcode::Cpy,
+    Opcode {
+        opcode_type: opcode::Type::Cpy,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0xCC,
     },
     // DEC
-    RawOpcode {
-        opcode: Opcode::Dec,
+    Opcode {
+        opcode_type: opcode::Type::Dec,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 5,
         encoding: 0xC6,
     },
-    RawOpcode {
-        opcode: Opcode::Dec,
+    Opcode {
+        opcode_type: opcode::Type::Dec,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 6,
         encoding: 0xD6,
     },
-    RawOpcode {
-        opcode: Opcode::Dec,
+    Opcode {
+        opcode_type: opcode::Type::Dec,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 6,
         encoding: 0xCE,
     },
-    RawOpcode {
-        opcode: Opcode::Dec,
+    Opcode {
+        opcode_type: opcode::Type::Dec,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 7,
         encoding: 0xDE,
     },
     // DEX
-    RawOpcode {
-        opcode: Opcode::Dex,
+    Opcode {
+        opcode_type: opcode::Type::Dex,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xCA,
     },
     // DEY
-    RawOpcode {
-        opcode: Opcode::Dey,
+    Opcode {
+        opcode_type: opcode::Type::Dey,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0x88,
     },
     // EOR
-    RawOpcode {
-        opcode: Opcode::Eor,
+    Opcode {
+        opcode_type: opcode::Type::Eor,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0x49,
     },
-    RawOpcode {
-        opcode: Opcode::Eor,
+    Opcode {
+        opcode_type: opcode::Type::Eor,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0x45,
     },
-    RawOpcode {
-        opcode: Opcode::Eor,
+    Opcode {
+        opcode_type: opcode::Type::Eor,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0x55,
     },
-    RawOpcode {
-        opcode: Opcode::Eor,
+    Opcode {
+        opcode_type: opcode::Type::Eor,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0x4D,
     },
-    RawOpcode {
-        opcode: Opcode::Eor,
+    Opcode {
+        opcode_type: opcode::Type::Eor,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 4,
         encoding: 0x5D,
     },
-    RawOpcode {
-        opcode: Opcode::Eor,
+    Opcode {
+        opcode_type: opcode::Type::Eor,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 4,
         encoding: 0x59,
     },
-    RawOpcode {
-        opcode: Opcode::Eor,
+    Opcode {
+        opcode_type: opcode::Type::Eor,
         addr_mode: AddressMode::IndirectX,
         base_cycle_cost: 6,
         encoding: 0x41,
     },
-    RawOpcode {
-        opcode: Opcode::Eor,
+    Opcode {
+        opcode_type: opcode::Type::Eor,
         addr_mode: AddressMode::IndirectY,
         base_cycle_cost: 5,
         encoding: 0x51,
     },
     // INC
-    RawOpcode {
-        opcode: Opcode::Inc,
+    Opcode {
+        opcode_type: opcode::Type::Inc,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 5,
         encoding: 0xE6,
     },
-    RawOpcode {
-        opcode: Opcode::Inc,
+    Opcode {
+        opcode_type: opcode::Type::Inc,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 6,
         encoding: 0xF6,
     },
-    RawOpcode {
-        opcode: Opcode::Inc,
+    Opcode {
+        opcode_type: opcode::Type::Inc,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 6,
         encoding: 0xEE,
     },
-    RawOpcode {
-        opcode: Opcode::Inc,
+    Opcode {
+        opcode_type: opcode::Type::Inc,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 7,
         encoding: 0xFE,
     },
     // INX
-    RawOpcode {
-        opcode: Opcode::Inx,
+    Opcode {
+        opcode_type: opcode::Type::Inx,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xE8,
     },
     // INY
-    RawOpcode {
-        opcode: Opcode::Iny,
+    Opcode {
+        opcode_type: opcode::Type::Iny,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xC8,
     },
     // JMP
-    RawOpcode {
-        opcode: Opcode::Jmp,
+    Opcode {
+        opcode_type: opcode::Type::Jmp,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 3,
         encoding: 0x4C,
     },
-    RawOpcode {
-        opcode: Opcode::Jmp,
+    Opcode {
+        opcode_type: opcode::Type::Jmp,
         addr_mode: AddressMode::Indirect,
         base_cycle_cost: 5,
         encoding: 0x6C,
     },
     // JSR
-    RawOpcode {
-        opcode: Opcode::Jsr,
+    Opcode {
+        opcode_type: opcode::Type::Jsr,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 6,
         encoding: 0x20,
     },
     // LDA
-    RawOpcode {
-        opcode: Opcode::Lda,
+    Opcode {
+        opcode_type: opcode::Type::Lda,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0xA9,
     },
-    RawOpcode {
-        opcode: Opcode::Lda,
+    Opcode {
+        opcode_type: opcode::Type::Lda,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0xA5,
     },
-    RawOpcode {
-        opcode: Opcode::Lda,
+    Opcode {
+        opcode_type: opcode::Type::Lda,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0xB5,
     },
-    RawOpcode {
-        opcode: Opcode::Lda,
+    Opcode {
+        opcode_type: opcode::Type::Lda,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0xAD,
     },
-    RawOpcode {
-        opcode: Opcode::Lda,
+    Opcode {
+        opcode_type: opcode::Type::Lda,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 4,
         encoding: 0xBD,
     },
-    RawOpcode {
-        opcode: Opcode::Lda,
+    Opcode {
+        opcode_type: opcode::Type::Lda,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 4,
         encoding: 0xB9,
     },
-    RawOpcode {
-        opcode: Opcode::Lda,
+    Opcode {
+        opcode_type: opcode::Type::Lda,
         addr_mode: AddressMode::IndirectX,
         base_cycle_cost: 6,
         encoding: 0xA1,
     },
-    RawOpcode {
-        opcode: Opcode::Lda,
+    Opcode {
+        opcode_type: opcode::Type::Lda,
         addr_mode: AddressMode::IndirectY,
         base_cycle_cost: 5,
         encoding: 0xB1,
     },
     // LDX
-    RawOpcode {
-        opcode: Opcode::Ldx,
+    Opcode {
+        opcode_type: opcode::Type::Ldx,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0xA2,
     },
-    RawOpcode {
-        opcode: Opcode::Ldx,
+    Opcode {
+        opcode_type: opcode::Type::Ldx,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0xA6,
     },
-    RawOpcode {
-        opcode: Opcode::Ldx,
+    Opcode {
+        opcode_type: opcode::Type::Ldx,
         addr_mode: AddressMode::ZeroPageY,
         base_cycle_cost: 4,
         encoding: 0xB6,
     },
-    RawOpcode {
-        opcode: Opcode::Ldx,
+    Opcode {
+        opcode_type: opcode::Type::Ldx,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0xAE,
     },
-    RawOpcode {
-        opcode: Opcode::Ldx,
+    Opcode {
+        opcode_type: opcode::Type::Ldx,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 4,
         encoding: 0xBE,
     },
     // LDY
-    RawOpcode {
-        opcode: Opcode::Ldy,
+    Opcode {
+        opcode_type: opcode::Type::Ldy,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0xA0,
     },
-    RawOpcode {
-        opcode: Opcode::Ldy,
+    Opcode {
+        opcode_type: opcode::Type::Ldy,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0xA4,
     },
-    RawOpcode {
-        opcode: Opcode::Ldy,
+    Opcode {
+        opcode_type: opcode::Type::Ldy,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0xB4,
     },
-    RawOpcode {
-        opcode: Opcode::Ldy,
+    Opcode {
+        opcode_type: opcode::Type::Ldy,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0xAC,
     },
-    RawOpcode {
-        opcode: Opcode::Ldy,
+    Opcode {
+        opcode_type: opcode::Type::Ldy,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 4,
         encoding: 0xBC,
     },
     // LSR
-    RawOpcode {
-        opcode: Opcode::Lsr,
+    Opcode {
+        opcode_type: opcode::Type::Lsr,
         addr_mode: AddressMode::Accumulator,
         base_cycle_cost: 2,
         encoding: 0x4A,
     },
-    RawOpcode {
-        opcode: Opcode::Lsr,
+    Opcode {
+        opcode_type: opcode::Type::Lsr,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 5,
         encoding: 0x46,
     },
-    RawOpcode {
-        opcode: Opcode::Lsr,
+    Opcode {
+        opcode_type: opcode::Type::Lsr,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 6,
         encoding: 0x56,
     },
-    RawOpcode {
-        opcode: Opcode::Lsr,
+    Opcode {
+        opcode_type: opcode::Type::Lsr,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 6,
         encoding: 0x4E,
     },
-    RawOpcode {
-        opcode: Opcode::Lsr,
+    Opcode {
+        opcode_type: opcode::Type::Lsr,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 7,
         encoding: 0x5E,
     },
     // NOP
-    RawOpcode {
-        opcode: Opcode::Nop,
+    Opcode {
+        opcode_type: opcode::Type::Nop,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xEA,
     },
     // ORA
-    RawOpcode {
-        opcode: Opcode::Ora,
+    Opcode {
+        opcode_type: opcode::Type::Ora,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0x09,
     },
-    RawOpcode {
-        opcode: Opcode::Ora,
+    Opcode {
+        opcode_type: opcode::Type::Ora,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0x05,
     },
-    RawOpcode {
-        opcode: Opcode::Ora,
+    Opcode {
+        opcode_type: opcode::Type::Ora,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0x15,
     },
-    RawOpcode {
-        opcode: Opcode::Ora,
+    Opcode {
+        opcode_type: opcode::Type::Ora,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0x0D,
     },
-    RawOpcode {
-        opcode: Opcode::Ora,
+    Opcode {
+        opcode_type: opcode::Type::Ora,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 4,
         encoding: 0x1D,
     },
-    RawOpcode {
-        opcode: Opcode::Ora,
+    Opcode {
+        opcode_type: opcode::Type::Ora,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 4,
         encoding: 0x19,
     },
-    RawOpcode {
-        opcode: Opcode::Ora,
+    Opcode {
+        opcode_type: opcode::Type::Ora,
         addr_mode: AddressMode::IndirectX,
         base_cycle_cost: 6,
         encoding: 0x01,
     },
-    RawOpcode {
-        opcode: Opcode::Ora,
+    Opcode {
+        opcode_type: opcode::Type::Ora,
         addr_mode: AddressMode::IndirectY,
         base_cycle_cost: 5,
         encoding: 0x11,
     },
     // PHA
-    RawOpcode {
-        opcode: Opcode::Pha,
+    Opcode {
+        opcode_type: opcode::Type::Pha,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 3,
         encoding: 0x48,
     },
     // PHP
-    RawOpcode {
-        opcode: Opcode::Php,
+    Opcode {
+        opcode_type: opcode::Type::Php,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 3,
         encoding: 0x08,
     },
     // PLA
-    RawOpcode {
-        opcode: Opcode::Pla,
+    Opcode {
+        opcode_type: opcode::Type::Pla,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 4,
         encoding: 0x68,
     },
     // PLP
-    RawOpcode {
-        opcode: Opcode::Plp,
+    Opcode {
+        opcode_type: opcode::Type::Plp,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 4,
         encoding: 0x28,
     },
     // ROL
-    RawOpcode {
-        opcode: Opcode::Rol,
+    Opcode {
+        opcode_type: opcode::Type::Rol,
         addr_mode: AddressMode::Accumulator,
         base_cycle_cost: 2,
         encoding: 0x2A,
     },
-    RawOpcode {
-        opcode: Opcode::Rol,
+    Opcode {
+        opcode_type: opcode::Type::Rol,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 5,
         encoding: 0x26,
     },
-    RawOpcode {
-        opcode: Opcode::Rol,
+    Opcode {
+        opcode_type: opcode::Type::Rol,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 6,
         encoding: 0x36,
     },
-    RawOpcode {
-        opcode: Opcode::Rol,
+    Opcode {
+        opcode_type: opcode::Type::Rol,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 6,
         encoding: 0x2E,
     },
-    RawOpcode {
-        opcode: Opcode::Rol,
+    Opcode {
+        opcode_type: opcode::Type::Rol,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 7,
         encoding: 0x3E,
     },
     // ROR
-    RawOpcode {
-        opcode: Opcode::Ror,
+    Opcode {
+        opcode_type: opcode::Type::Ror,
         addr_mode: AddressMode::Accumulator,
         base_cycle_cost: 2,
         encoding: 0x6A,
     },
-    RawOpcode {
-        opcode: Opcode::Ror,
+    Opcode {
+        opcode_type: opcode::Type::Ror,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 5,
         encoding: 0x66,
     },
-    RawOpcode {
-        opcode: Opcode::Ror,
+    Opcode {
+        opcode_type: opcode::Type::Ror,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 6,
         encoding: 0x76,
     },
-    RawOpcode {
-        opcode: Opcode::Ror,
+    Opcode {
+        opcode_type: opcode::Type::Ror,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 6,
         encoding: 0x6E,
     },
-    RawOpcode {
-        opcode: Opcode::Ror,
+    Opcode {
+        opcode_type: opcode::Type::Ror,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 7,
         encoding: 0x7E,
     },
     // RTI
-    RawOpcode {
-        opcode: Opcode::Rti,
+    Opcode {
+        opcode_type: opcode::Type::Rti,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 6,
         encoding: 0x40,
     },
     // RTS
-    RawOpcode {
-        opcode: Opcode::Rts,
+    Opcode {
+        opcode_type: opcode::Type::Rts,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 6,
         encoding: 0x60,
     },
     // SBC
-    RawOpcode {
-        opcode: Opcode::Sbc,
+    Opcode {
+        opcode_type: opcode::Type::Sbc,
         addr_mode: AddressMode::Immediate,
         base_cycle_cost: 2,
         encoding: 0xE9,
     },
-    RawOpcode {
-        opcode: Opcode::Sbc,
+    Opcode {
+        opcode_type: opcode::Type::Sbc,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0xE5,
     },
-    RawOpcode {
-        opcode: Opcode::Sbc,
+    Opcode {
+        opcode_type: opcode::Type::Sbc,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0xF5,
     },
-    RawOpcode {
-        opcode: Opcode::Sbc,
+    Opcode {
+        opcode_type: opcode::Type::Sbc,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0xED,
     },
-    RawOpcode {
-        opcode: Opcode::Sbc,
+    Opcode {
+        opcode_type: opcode::Type::Sbc,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 4,
         encoding: 0xFD,
     },
-    RawOpcode {
-        opcode: Opcode::Sbc,
+    Opcode {
+        opcode_type: opcode::Type::Sbc,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 4,
         encoding: 0xF9,
     },
-    RawOpcode {
-        opcode: Opcode::Sbc,
+    Opcode {
+        opcode_type: opcode::Type::Sbc,
         addr_mode: AddressMode::IndirectX,
         base_cycle_cost: 6,
         encoding: 0xE1,
     },
-    RawOpcode {
-        opcode: Opcode::Sbc,
+    Opcode {
+        opcode_type: opcode::Type::Sbc,
         addr_mode: AddressMode::IndirectY,
         base_cycle_cost: 5,
         encoding: 0xF1,
     },
     // SEC
-    RawOpcode {
-        opcode: Opcode::Sec,
+    Opcode {
+        opcode_type: opcode::Type::Sec,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0x38,
     },
     // SED
-    RawOpcode {
-        opcode: Opcode::Sed,
+    Opcode {
+        opcode_type: opcode::Type::Sed,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xF8,
     },
     // SEI
-    RawOpcode {
-        opcode: Opcode::Sei,
+    Opcode {
+        opcode_type: opcode::Type::Sei,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0x78,
     },
     // STA
-    RawOpcode {
-        opcode: Opcode::Sta,
+    Opcode {
+        opcode_type: opcode::Type::Sta,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0x85,
     },
-    RawOpcode {
-        opcode: Opcode::Sta,
+    Opcode {
+        opcode_type: opcode::Type::Sta,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0x95,
     },
-    RawOpcode {
-        opcode: Opcode::Sta,
+    Opcode {
+        opcode_type: opcode::Type::Sta,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0x8D,
     },
-    RawOpcode {
-        opcode: Opcode::Sta,
+    Opcode {
+        opcode_type: opcode::Type::Sta,
         addr_mode: AddressMode::AbsoluteX,
         base_cycle_cost: 5,
         encoding: 0x9D,
     },
-    RawOpcode {
-        opcode: Opcode::Sta,
+    Opcode {
+        opcode_type: opcode::Type::Sta,
         addr_mode: AddressMode::AbsoluteY,
         base_cycle_cost: 5,
         encoding: 0x99,
     },
-    RawOpcode {
-        opcode: Opcode::Sta,
+    Opcode {
+        opcode_type: opcode::Type::Sta,
         addr_mode: AddressMode::IndirectX,
         base_cycle_cost: 6,
         encoding: 0x81,
     },
-    RawOpcode {
-        opcode: Opcode::Sta,
+    Opcode {
+        opcode_type: opcode::Type::Sta,
         addr_mode: AddressMode::IndirectY,
         base_cycle_cost: 6,
         encoding: 0x91,
     },
     // STX
-    RawOpcode {
-        opcode: Opcode::Stx,
+    Opcode {
+        opcode_type: opcode::Type::Stx,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0x86,
     },
-    RawOpcode {
-        opcode: Opcode::Stx,
+    Opcode {
+        opcode_type: opcode::Type::Stx,
         addr_mode: AddressMode::ZeroPageY,
         base_cycle_cost: 4,
         encoding: 0x96,
     },
-    RawOpcode {
-        opcode: Opcode::Stx,
+    Opcode {
+        opcode_type: opcode::Type::Stx,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0x8E,
     },
     // STY
-    RawOpcode {
-        opcode: Opcode::Sty,
+    Opcode {
+        opcode_type: opcode::Type::Sty,
         addr_mode: AddressMode::ZeroPage,
         base_cycle_cost: 3,
         encoding: 0x84,
     },
-    RawOpcode {
-        opcode: Opcode::Sty,
+    Opcode {
+        opcode_type: opcode::Type::Sty,
         addr_mode: AddressMode::ZeroPageX,
         base_cycle_cost: 4,
         encoding: 0x94,
     },
-    RawOpcode {
-        opcode: Opcode::Sty,
+    Opcode {
+        opcode_type: opcode::Type::Sty,
         addr_mode: AddressMode::Absolute,
         base_cycle_cost: 4,
         encoding: 0x8C,
     },
     // TAX
-    RawOpcode {
-        opcode: Opcode::Tax,
+    Opcode {
+        opcode_type: opcode::Type::Tax,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xAA,
     },
     // TAY
-    RawOpcode {
-        opcode: Opcode::Tay,
+    Opcode {
+        opcode_type: opcode::Type::Tay,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xA8,
     },
     // TSX
-    RawOpcode {
-        opcode: Opcode::Tsx,
+    Opcode {
+        opcode_type: opcode::Type::Tsx,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0xBA,
     },
     // TXA
-    RawOpcode {
-        opcode: Opcode::Txa,
+    Opcode {
+        opcode_type: opcode::Type::Txa,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0x8A,
     },
     // TXS
-    RawOpcode {
-        opcode: Opcode::Txs,
+    Opcode {
+        opcode_type: opcode::Type::Txs,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0x9A,
     },
     // TYA
-    RawOpcode {
-        opcode: Opcode::Tya,
+    Opcode {
+        opcode_type: opcode::Type::Tya,
         addr_mode: AddressMode::Implicit,
         base_cycle_cost: 2,
         encoding: 0x98,
@@ -988,26 +989,30 @@ const RAW_OPCODES: &[RawOpcode] = &[
 /// addressing mode, and base cycle cost.
 ///
 /// Reference: obelisk.me.uk/6502/reference.html
-fn decode_raw_opcode(raw_opcode: u8) -> Option<(Opcode, AddressMode, u64)> {
+fn decode_raw_opcode(opcode: u8) -> Option<(opcode::Type, AddressMode, u64)> {
     lazy_static! {
-        static ref OPCODES_BY_ENCODING: [Option<(Opcode, AddressMode, u64)>; 256] = {
+        static ref OPCODES_BY_ENCODING: [Option<(opcode::Type, AddressMode, u64)>; 256] = {
             let mut opcodes = [None; 256];
             for raw in RAW_OPCODES.iter() {
                 opcodes[raw.encoding as usize] =
-                    Some((raw.opcode, raw.addr_mode, raw.base_cycle_cost));
+                    Some((raw.opcode_type, raw.addr_mode, raw.base_cycle_cost));
             }
             opcodes
         };
     }
 
-    OPCODES_BY_ENCODING[raw_opcode as usize]
+    OPCODES_BY_ENCODING[opcode as usize]
 }
 
 // Consumes bytes from the instruction "segment" to calculate an operand value,
 // based on the provided addressing mode. It returns the operand, plus any CPU
 // cycle adjustment required to process indexed memory reads that cross page
 // boundaries. See page_crossing_cycle_adjustment() for more.
-fn decode_operand(cpu: &mut Cpu, opcode: Opcode, addr_mode: AddressMode) -> (Operand, u64) {
+fn decode_operand(
+    cpu: &mut Cpu,
+    opcode_type: opcode::Type,
+    addr_mode: AddressMode,
+) -> (Operand, u64) {
     match addr_mode {
         AddressMode::Implicit => (Operand::None, 0),
         AddressMode::Accumulator => (Operand::Accumulator, 0),
@@ -1037,7 +1042,7 @@ fn decode_operand(cpu: &mut Cpu, opcode: Opcode, addr_mode: AddressMode) -> (Ope
             let addr = base + cpu.regs.x as u16;
             (
                 Operand::Memory(addr),
-                page_crossing_cycle_adjusment(opcode, base, addr),
+                page_crossing_cycle_adjusment(opcode_type, base, addr),
             )
         }
         AddressMode::AbsoluteY => {
@@ -1048,7 +1053,7 @@ fn decode_operand(cpu: &mut Cpu, opcode: Opcode, addr_mode: AddressMode) -> (Ope
             let addr = base + cpu.regs.y as u16;
             (
                 Operand::Memory(addr),
-                page_crossing_cycle_adjusment(opcode, base, addr),
+                page_crossing_cycle_adjusment(opcode_type, base, addr),
             )
         }
         AddressMode::Indirect => {
@@ -1074,7 +1079,7 @@ fn decode_operand(cpu: &mut Cpu, opcode: Opcode, addr_mode: AddressMode) -> (Ope
             let addr = base + cpu.regs.y as u16;
             (
                 Operand::Memory(addr),
-                page_crossing_cycle_adjusment(opcode, base, addr),
+                page_crossing_cycle_adjusment(opcode_type, base, addr),
             )
         }
     }
@@ -1103,8 +1108,8 @@ fn decode_operand(cpu: &mut Cpu, opcode: Opcode, addr_mode: AddressMode) -> (Ope
 // reads are fine, but speculative writes are not. Thus, opcodes that write to
 // memory, or read from and write to the same address, must incur the full cost
 // of a two-cycle add. The base cycle cost for those opcodes accounts for this.
-fn page_crossing_cycle_adjusment(opcode: Opcode, before: u16, after: u16) -> u64 {
-    if !opcode.writes_memory() && math::page_crossing(before, after) {
+fn page_crossing_cycle_adjusment(opcode_type: opcode::Type, before: u16, after: u16) -> u64 {
+    if !opcode_type.writes_memory() && math::page_crossing(before, after) {
         1
     } else {
         0
@@ -1115,7 +1120,7 @@ fn page_crossing_cycle_adjusment(opcode: Opcode, before: u16, after: u16) -> u64
 fn test_decode_implicit() {
     let mut cpu = Cpu::new();
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Brk, AddressMode::Implicit),
+        decode_operand(&mut cpu, opcode::Type::Brk, AddressMode::Implicit),
         (Operand::None, 0)
     );
     assert_eq!(cpu.regs.pc, 0);
@@ -1125,7 +1130,7 @@ fn test_decode_implicit() {
 fn test_decode_accumulator() {
     let mut cpu = Cpu::new();
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Asl, AddressMode::Accumulator),
+        decode_operand(&mut cpu, opcode::Type::Asl, AddressMode::Accumulator),
         (Operand::Accumulator, 0)
     );
     assert_eq!(cpu.regs.pc, 0);
@@ -1136,7 +1141,7 @@ fn test_decode_immediate() {
     let mut cpu = Cpu::new();
     cpu.mem_write(0, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Adc, AddressMode::Immediate),
+        decode_operand(&mut cpu, opcode::Type::Adc, AddressMode::Immediate),
         (Operand::Immediate(0xAB), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1148,7 +1153,7 @@ fn test_decode_zero_page() {
     cpu.mem_write(0, 0x1F);
     cpu.mem_write(0x1F, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPage),
+        decode_operand(&mut cpu, opcode::Type::Adc, AddressMode::ZeroPage),
         (Operand::Memory(0x1F), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1160,7 +1165,7 @@ fn test_decode_zero_page_x() {
     cpu.regs.x = 1;
     cpu.mem_write(0, 0x10);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPageX),
+        decode_operand(&mut cpu, opcode::Type::Adc, AddressMode::ZeroPageX),
         (Operand::Memory(0x11), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1170,7 +1175,7 @@ fn test_decode_zero_page_x() {
     cpu.regs.x = 2;
     cpu.mem_write(0, 0xFF);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPageX),
+        decode_operand(&mut cpu, opcode::Type::Adc, AddressMode::ZeroPageX),
         (Operand::Memory(0x01), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1182,7 +1187,7 @@ fn test_decode_zero_page_y() {
     cpu.regs.y = 1;
     cpu.mem_write(0, 0x10);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPageY),
+        decode_operand(&mut cpu, opcode::Type::Adc, AddressMode::ZeroPageY),
         (Operand::Memory(0x11), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1192,7 +1197,7 @@ fn test_decode_zero_page_y() {
     cpu.regs.y = 2;
     cpu.mem_write(0, 0xFF);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Adc, AddressMode::ZeroPageY),
+        decode_operand(&mut cpu, opcode::Type::Adc, AddressMode::ZeroPageY),
         (Operand::Memory(0x01), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1203,7 +1208,7 @@ fn test_decode_relative() {
     let mut cpu = Cpu::new();
     cpu.mem_write(0, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Beq, AddressMode::Relative),
+        decode_operand(&mut cpu, opcode::Type::Beq, AddressMode::Relative),
         (Operand::Immediate(0xAB), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1215,7 +1220,7 @@ fn test_decode_absolute() {
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Jsr, AddressMode::Absolute),
+        decode_operand(&mut cpu, opcode::Type::Jsr, AddressMode::Absolute),
         (Operand::Memory(0xABCD), 0)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1229,7 +1234,7 @@ fn test_decode_absolute_x() {
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Lda, AddressMode::AbsoluteX),
+        decode_operand(&mut cpu, opcode::Type::Lda, AddressMode::AbsoluteX),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1240,7 +1245,7 @@ fn test_decode_absolute_x() {
     cpu.mem_write(0, 0xFF);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Lda, AddressMode::AbsoluteX),
+        decode_operand(&mut cpu, opcode::Type::Lda, AddressMode::AbsoluteX),
         (Operand::Memory(0xAC00), 1)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1251,7 +1256,7 @@ fn test_decode_absolute_x() {
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Sta, AddressMode::AbsoluteX),
+        decode_operand(&mut cpu, opcode::Type::Sta, AddressMode::AbsoluteX),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1262,7 +1267,7 @@ fn test_decode_absolute_x() {
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Dec, AddressMode::AbsoluteX),
+        decode_operand(&mut cpu, opcode::Type::Dec, AddressMode::AbsoluteX),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1276,7 +1281,7 @@ fn test_decode_absolute_y() {
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Lda, AddressMode::AbsoluteY),
+        decode_operand(&mut cpu, opcode::Type::Lda, AddressMode::AbsoluteY),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1287,7 +1292,7 @@ fn test_decode_absolute_y() {
     cpu.mem_write(0, 0xFF);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Lda, AddressMode::AbsoluteY),
+        decode_operand(&mut cpu, opcode::Type::Lda, AddressMode::AbsoluteY),
         (Operand::Memory(0xAC00), 1)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1298,7 +1303,7 @@ fn test_decode_absolute_y() {
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Sta, AddressMode::AbsoluteY),
+        decode_operand(&mut cpu, opcode::Type::Sta, AddressMode::AbsoluteY),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1309,7 +1314,7 @@ fn test_decode_absolute_y() {
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Dec, AddressMode::AbsoluteY),
+        decode_operand(&mut cpu, opcode::Type::Dec, AddressMode::AbsoluteY),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1324,7 +1329,7 @@ fn test_decode_indirect() {
     cpu.mem_write(0x1FF, 0xCD);
     cpu.mem_write(0x200, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Jmp, AddressMode::Indirect),
+        decode_operand(&mut cpu, opcode::Type::Jmp, AddressMode::Indirect),
         (Operand::Memory(0xABCD), 0)
     );
     assert_eq!(cpu.regs.pc, 2);
@@ -1338,7 +1343,7 @@ fn test_decode_indirect_x() {
     cpu.mem_write(0x10, 0xCD);
     cpu.mem_write(0x11, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Adc, AddressMode::IndirectX),
+        decode_operand(&mut cpu, opcode::Type::Adc, AddressMode::IndirectX),
         (Operand::Memory(0xABCD), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1350,7 +1355,7 @@ fn test_decode_indirect_x() {
     cpu.mem_write(1, 0xCD);
     cpu.mem_write(2, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Adc, AddressMode::IndirectX),
+        decode_operand(&mut cpu, opcode::Type::Adc, AddressMode::IndirectX),
         (Operand::Memory(0xABCD), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1365,7 +1370,7 @@ fn test_decode_indirect_y() {
     cpu.mem_write(0xF, 0xCD);
     cpu.mem_write(0x10, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Lda, AddressMode::IndirectY),
+        decode_operand(&mut cpu, opcode::Type::Lda, AddressMode::IndirectY),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1377,7 +1382,7 @@ fn test_decode_indirect_y() {
     cpu.mem_write(0xF, 0xFF);
     cpu.mem_write(0x10, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Lda, AddressMode::IndirectY),
+        decode_operand(&mut cpu, opcode::Type::Lda, AddressMode::IndirectY),
         (Operand::Memory(0xAC00), 1)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1389,7 +1394,7 @@ fn test_decode_indirect_y() {
     cpu.mem_write(0xF, 0xCD);
     cpu.mem_write(0x10, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Sta, AddressMode::IndirectY),
+        decode_operand(&mut cpu, opcode::Type::Sta, AddressMode::IndirectY),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
@@ -1401,7 +1406,7 @@ fn test_decode_indirect_y() {
     cpu.mem_write(0xF, 0xCD);
     cpu.mem_write(0x10, 0xAB);
     assert_eq!(
-        decode_operand(&mut cpu, Opcode::Dec, AddressMode::IndirectY),
+        decode_operand(&mut cpu, opcode::Type::Dec, AddressMode::IndirectY),
         (Operand::Memory(0xABCE), 0)
     );
     assert_eq!(cpu.regs.pc, 1);
