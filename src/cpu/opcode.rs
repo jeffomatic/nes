@@ -71,14 +71,14 @@ impl Type {
     }
 }
 
-pub struct Opcode {
-    pub opcode_type: opcode::Type,
-    pub addr_mode: AddressMode,
-    pub base_cycle_cost: u64,
-    pub encoding: u8,
+struct Opcode {
+    opcode_type: opcode::Type,
+    addr_mode: AddressMode,
+    base_cycle_cost: u64,
+    encoding: u8,
 }
 
-pub const OPCODES: &[Opcode] = &[
+const OPCODES: &[Opcode] = &[
     // ADC
     Opcode {
         opcode_type: opcode::Type::Adc,
@@ -1042,3 +1042,22 @@ pub const OPCODES: &[Opcode] = &[
         encoding: 0x98,
     },
 ];
+
+/// Takes a encoded opcode and converts it to a tuple containing the opcode,
+/// addressing mode, and base cycle cost.
+///
+/// Reference: obelisk.me.uk/6502/reference.html
+pub fn decode(opcode: u8) -> Option<(opcode::Type, AddressMode, u64)> {
+    lazy_static! {
+        static ref OPCODES_BY_ENCODING: [Option<(opcode::Type, AddressMode, u64)>; 256] = {
+            let mut opcodes = [None; 256];
+            for raw in opcode::OPCODES.iter() {
+                opcodes[raw.encoding as usize] =
+                    Some((raw.opcode_type, raw.addr_mode, raw.base_cycle_cost));
+            }
+            opcodes
+        };
+    }
+
+    OPCODES_BY_ENCODING[opcode as usize]
+}

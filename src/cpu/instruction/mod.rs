@@ -1,5 +1,5 @@
 use super::opcode;
-use super::operand::Operand;
+use super::operand::{self, Operand};
 use super::state::Cpu;
 
 mod arithmetic;
@@ -13,6 +13,15 @@ mod stack;
 mod status;
 mod system;
 mod transfer;
+
+/// Decodes the instruction at the PC and returns a tuple containing the opcode,
+/// operand, and base cycle cost. The PC will be incremented to the start of the
+/// next instruction.
+pub fn decode(cpu: &mut Cpu) -> Option<(opcode::Type, Operand, u64)> {
+    let (opcode_type, addr_mode, cycles) = opcode::decode(cpu.consume_instruction_byte())?;
+    let (operand, cycle_adjust) = operand::decode(cpu, opcode_type, addr_mode);
+    Some((opcode_type, operand, cycles + cycle_adjust))
+}
 
 pub fn execute(opcode_type: opcode::Type, cpu: &mut Cpu, operand: Operand) {
     match opcode_type {

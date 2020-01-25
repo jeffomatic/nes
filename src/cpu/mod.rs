@@ -1,5 +1,4 @@
 mod address_mode;
-mod decode;
 mod instruction;
 mod opcode;
 mod operand;
@@ -7,7 +6,7 @@ mod state;
 mod status;
 
 fn next(cpu: &mut state::Cpu) {
-    let (opcode_type, operand, _cycles) = decode::decode_instruction(cpu).unwrap();
+    let (opcode_type, operand, _cycles) = instruction::decode(cpu).unwrap();
     instruction::execute(opcode_type, cpu, operand);
 }
 
