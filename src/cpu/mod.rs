@@ -1,13 +1,13 @@
 mod address_mode;
-mod decode;
+mod execute;
 mod opcode;
 mod operand;
 mod state;
 mod status;
 
 fn next(cpu: &mut state::Cpu) {
-    let (opcode_type, operand, _cycles) = decode::decode(cpu).unwrap();
-    opcode_type.execute(cpu, operand);
+    let (opcode_type, operand, _cycles) = opcode::decode(cpu).unwrap();
+    execute::execute(opcode_type, cpu, operand);
 }
 
 #[test]
