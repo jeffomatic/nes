@@ -6,8 +6,7 @@ mod state;
 mod status;
 
 fn next(cpu: &mut state::Cpu) {
-    let (opcode_type, addr_mode, base_cost) =
-        opcode::decode(cpu.consume_instruction_byte()).unwrap();
+    let (opcode_type, addr_mode, base_cost) = opcode::decode(cpu.instruction_fetch_byte()).unwrap();
     let (operand, operand_cost) = operand::decode(cpu, opcode_type, addr_mode);
     instruction::execute(opcode_type, cpu, operand);
     cpu.cycle_add(base_cost + operand_cost);

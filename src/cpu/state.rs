@@ -139,7 +139,7 @@ impl Cpu {
         }
     }
 
-    pub fn consume_instruction_byte(&mut self) -> u8 {
+    pub fn instruction_fetch_byte(&mut self) -> u8 {
         self.regs.pc += 1;
         self.mem_read(self.regs.pc - 1)
     }

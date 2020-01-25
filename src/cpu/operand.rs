@@ -76,29 +76,27 @@ pub fn decode(cpu: &mut Cpu, opcode_type: opcode::Type, addr_mode: AddressMode) 
     match addr_mode {
         AddressMode::Implicit => (Operand::None, 0),
         AddressMode::Accumulator => (Operand::Accumulator, 0),
-        AddressMode::Immediate => (Operand::Immediate(cpu.consume_instruction_byte()), 0),
-        AddressMode::ZeroPage => (Operand::Memory(cpu.consume_instruction_byte() as u16), 0),
+        AddressMode::Immediate => (Operand::Immediate(cpu.instruction_fetch_byte()), 0),
+        AddressMode::ZeroPage => (Operand::Memory(cpu.instruction_fetch_byte() as u16), 0),
         AddressMode::ZeroPageX => (
-            Operand::Memory(cpu.regs.x.wrapping_add(cpu.consume_instruction_byte()) as u16),
+            Operand::Memory(cpu.regs.x.wrapping_add(cpu.instruction_fetch_byte()) as u16),
             0,
         ),
         AddressMode::ZeroPageY => (
-            Operand::Memory(cpu.regs.y.wrapping_add(cpu.consume_instruction_byte()) as u16),
+            Operand::Memory(cpu.regs.y.wrapping_add(cpu.instruction_fetch_byte()) as u16),
             0,
         ),
-        AddressMode::Relative => (Operand::Immediate(cpu.consume_instruction_byte()), 0),
+        AddressMode::Relative => (Operand::Immediate(cpu.instruction_fetch_byte()), 0),
         AddressMode::Absolute => (
             Operand::Memory(math::bytes_to_u16_le([
-                cpu.consume_instruction_byte(),
-                cpu.consume_instruction_byte(),
+                cpu.instruction_fetch_byte(),
+                cpu.instruction_fetch_byte(),
             ])),
             0,
         ),
         AddressMode::AbsoluteX => {
-            let base = math::bytes_to_u16_le([
-                cpu.consume_instruction_byte(),
-                cpu.consume_instruction_byte(),
-            ]);
+            let base =
+                math::bytes_to_u16_le([cpu.instruction_fetch_byte(), cpu.instruction_fetch_byte()]);
             let addr = base + cpu.regs.x as u16;
             (
                 Operand::Memory(addr),
@@ -106,10 +104,8 @@ pub fn decode(cpu: &mut Cpu, opcode_type: opcode::Type, addr_mode: AddressMode) 
             )
         }
         AddressMode::AbsoluteY => {
-            let base = math::bytes_to_u16_le([
-                cpu.consume_instruction_byte(),
-                cpu.consume_instruction_byte(),
-            ]);
+            let base =
+                math::bytes_to_u16_le([cpu.instruction_fetch_byte(), cpu.instruction_fetch_byte()]);
             let addr = base + cpu.regs.y as u16;
             (
                 Operand::Memory(addr),
@@ -117,24 +113,21 @@ pub fn decode(cpu: &mut Cpu, opcode_type: opcode::Type, addr_mode: AddressMode) 
             )
         }
         AddressMode::Indirect => {
-            let bytes = [
-                cpu.consume_instruction_byte(),
-                cpu.consume_instruction_byte(),
-            ];
+            let bytes = [cpu.instruction_fetch_byte(), cpu.instruction_fetch_byte()];
             (
                 Operand::Memory(cpu.mem_read16(math::bytes_to_u16_le(bytes))),
                 0,
             )
         }
         AddressMode::IndirectX => {
-            let offset = cpu.consume_instruction_byte();
+            let offset = cpu.instruction_fetch_byte();
             (
                 Operand::Memory(cpu.mem_read16(cpu.regs.x.wrapping_add(offset) as u16)),
                 0,
             )
         }
         AddressMode::IndirectY => {
-            let indirect = cpu.consume_instruction_byte() as u16;
+            let indirect = cpu.instruction_fetch_byte() as u16;
             let base = cpu.mem_read16(indirect);
             let addr = base + cpu.regs.y as u16;
             (
