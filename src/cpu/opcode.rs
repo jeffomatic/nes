@@ -1094,7 +1094,7 @@ pub fn decode(opcode: u8) -> Option<(Type, AddressMode, u64)> {
     OPCODES_BY_ENCODING[opcode as usize]
 }
 
-pub fn encode(opcode_type: Type, addr_mode: AddressMode) -> u8 {
+pub fn encode(opcode_type: Type, addr_mode: AddressMode) -> Option<u8> {
     lazy_static! {
         static ref ENCODINGS_BY_TYPE_AND_ADDR_MODE: HashMap<(Type, AddressMode), u8> = {
             let mut map = HashMap::new();
@@ -1105,13 +1105,13 @@ pub fn encode(opcode_type: Type, addr_mode: AddressMode) -> u8 {
         };
     }
 
-    *ENCODINGS_BY_TYPE_AND_ADDR_MODE
+    ENCODINGS_BY_TYPE_AND_ADDR_MODE
         .get(&(opcode_type, addr_mode))
-        .unwrap()
+        .map(|v| *v)
 }
 
 #[test]
 fn test_encode() {
-    assert_eq!(encode(Type::Adc, AddressMode::Immediate), 0x69);
-    assert_eq!(encode(Type::Tya, AddressMode::Implicit), 0x98);
+    assert_eq!(encode(Type::Adc, AddressMode::Immediate), Some(0x69));
+    assert_eq!(encode(Type::Tya, AddressMode::Implicit), Some(0x98));
 }

@@ -10,30 +10,61 @@ use std::fmt;
 enum Statement<'a> {
     Label(&'a str),
     Definition(&'a str, Numeric),
-    Instruction(opcode::Type, Option<Operand<'a>>),
+    Instruction(opcode::Type, Operand<'a>),
 }
 
 #[derive(Debug)]
 enum Operand<'a> {
-    Immediate(Opval<'a>),
-    IndexX(Opval<'a>),
-    IndexY(Opval<'a>),
-    Indirect(Opval<'a>),
-    IndirectX(Opval<'a>),
-    IndirectY(Opval<'a>),
-    Direct(Opval<'a>),
+    None,                 // address modes: implicit, accumulator
+    Immediate(Opval<'a>), // address modes: immediate
+    IndexX(Opval<'a>),    // address modes: zero page x, absolute x
+    IndexY(Opval<'a>),    // address modes: zero page y, absolute y
+    Indirect(Opval<'a>),  // address modes: indirect
+    IndirectX(Opval<'a>), // address modes: indirect x
+    IndirectY(Opval<'a>), // address modes: indirect y
+    Direct(Opval<'a>),    // address modes: absolute, relative, zero page
 }
 
 #[derive(Debug)]
 enum Opval<'a> {
-    Identifier(&'a str),
+    Reference(&'a str),
     Literal(Numeric),
+}
+
+impl Opval<'_> {
+    pub fn to_numeric<'a>(
+        &self,
+        definitions: &HashMap<&'a str, Numeric>,
+    ) -> Result<Numeric, ParseError> {
+        match self {
+            Self::Reference(s) => {
+                if let Some(n) = definitions.get(s) {
+                    Ok(*n)
+                } else {
+                    Err(ParseError {
+                        msg: format!("no definition found for \"{}\"", s),
+                        src: String::from(""),
+                    })
+                }
+            }
+            Self::Literal(n) => Ok(*n),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
 enum Numeric {
     Byte(u8),
     Word(u16),
+}
+
+impl Numeric {
+    fn to_bytes(self) -> Vec<u8> {
+        match self {
+            Self::Byte(n) => vec![n],
+            Self::Word(n) => math::u16_to_bytes_le(n).iter().cloned().collect(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -110,9 +141,9 @@ fn parse_statement<'a>(line: &'a str) -> Result<Statement<'a>, Box<dyn Error>> {
     }
 
     if let Some(caps) = INSTRUCTION_REGEX.captures(line) {
-        let mut operand = None;
+        let mut operand = Operand::None;
         if let Some(operand_src) = caps.name("operand") {
-            operand = Some(parse_operand(operand_src.as_str())?);
+            operand = parse_operand(operand_src.as_str())?;
         }
 
         return Ok(Statement::Instruction(
@@ -255,7 +286,7 @@ fn parse_operand<'a>(src: &'a str) -> Result<Operand, Box<dyn Error>> {
 
 fn parse_opval<'a>(src: &'a str) -> Result<Opval, Box<dyn Error>> {
     if let Some(caps) = IDENTIFIER_REGEX.captures(src) {
-        return Ok(Opval::Identifier(caps.name("value").unwrap().as_str()));
+        return Ok(Opval::Reference(caps.name("value").unwrap().as_str()));
     }
 
     if let Ok(numeric) = parse_numeric(src) {
@@ -268,6 +299,7 @@ fn parse_opval<'a>(src: &'a str) -> Result<Opval, Box<dyn Error>> {
     }))
 }
 
+// TODO: return an actual error message.
 pub fn assemble(src: &str) -> Vec<u8> {
     // collect statements
     let mut statements = Vec::new();
@@ -291,85 +323,189 @@ pub fn assemble(src: &str) -> Vec<u8> {
         }
     }
 
-    // setup identifier table, including labels
-    let mut identifiers = HashMap::new();
-    let mut instruction_statements = Vec::new();
+    // setup tables for labels and definitions
+    let mut labels: HashMap<&str, usize> = HashMap::new();
+    let mut definitions: HashMap<&str, Numeric> = HashMap::new();
+    let mut instructions = Vec::new();
     for s in statements.iter() {
         match s {
             Statement::Label(identifier) => {
-                // insert the label as an address equal to the next instruction
-                identifiers.insert(
-                    identifier,
-                    Numeric::Word(instruction_statements.len() as u16),
-                );
+                let addr = instructions.len();
+                labels.insert(identifier, addr);
+                definitions.insert(identifier, Numeric::Word(addr as u16));
             }
             Statement::Definition(identifier, numeric) => {
-                identifiers.insert(identifier, *numeric);
+                definitions.insert(identifier, *numeric);
             }
             Statement::Instruction(opcode_type, operand) => {
-                instruction_statements.push((opcode_type, operand))
+                instructions.push((opcode_type, operand))
             }
         }
     }
 
-    // resolve identifiers and assign address modes
+    // resolve definition references and assign address modes
     // TODO: reduce code length and clean up error handling to track line numbers
-    let code = Vec::new();
-    // for (opcode_type, operand) in instruction_statements.iter() {
-    //     if operand.is_none() {
-    //         if opcode_type.compatible_with(AddressMode::Implicit) {
-    //             return Instruction(opcode_type, AddressMode::Implicit, None);
-    //         } else if opcode_type.compatible_with(AddressMode::Accumulator) {
-    //             return Instruction(opcode_type, AddressMode::Accumulator, None);
-    //         } else {
-    //             panic!(
-    //                 "incompatible operand {:?} for opcode type {:?}",
-    //                 opcode_type, operand
-    //             );
-    //         }
-    //     }
+    let address_modes: Vec<AddressMode> = instructions
+        .iter()
+        .map(|(&opcode_type, operand)| {
+            match operand {
+                Operand::None => {
+                    if opcode_type.compatible_with(AddressMode::Implicit) {
+                        return AddressMode::Implicit;
+                    }
+                    if opcode_type.compatible_with(AddressMode::Accumulator) {
+                        return AddressMode::Accumulator;
+                    }
+                }
+                Operand::Immediate(_) => {
+                    if opcode_type.compatible_with(AddressMode::Immediate) {
+                        return AddressMode::Immediate;
+                    }
+                }
+                Operand::IndexX(opval) => match opval.to_numeric(&definitions).unwrap() {
+                    Numeric::Byte(_) => {
+                        if opcode_type.compatible_with(AddressMode::ZeroPageX) {
+                            return AddressMode::ZeroPageX;
+                        }
+                    }
+                    Numeric::Word(_) => {
+                        if opcode_type.compatible_with(AddressMode::AbsoluteX) {
+                            return AddressMode::AbsoluteX;
+                        }
+                    }
+                },
+                Operand::IndexY(opval) => match opval.to_numeric(&definitions).unwrap() {
+                    Numeric::Byte(_) => {
+                        if opcode_type.compatible_with(AddressMode::ZeroPageY) {
+                            return AddressMode::ZeroPageY;
+                        }
+                    }
+                    Numeric::Word(_) => {
+                        if opcode_type.compatible_with(AddressMode::AbsoluteY) {
+                            return AddressMode::AbsoluteY;
+                        }
+                    }
+                },
+                Operand::Indirect(_) => {
+                    if opcode_type.compatible_with(AddressMode::Indirect) {
+                        return AddressMode::Indirect;
+                    }
+                }
+                Operand::IndirectX(_) => {
+                    if opcode_type.compatible_with(AddressMode::IndirectX) {
+                        return AddressMode::IndirectX;
+                    }
+                }
+                Operand::IndirectY(_) => {
+                    if opcode_type.compatible_with(AddressMode::IndirectY) {
+                        return AddressMode::IndirectY;
+                    }
+                }
+                Operand::Direct(opval) => {
+                    if opcode_type.compatible_with(AddressMode::Relative) {
+                        return AddressMode::Relative;
+                    }
 
-    //     match operand {
-    //         Operand::Immediate(opval) => {
-    //             let n = match opval {
-    //                 Opval::Identifier(identifier) => identifiers.get(&identifier).unwrap(),
-    //                 Opval::Literal(n) => n,
-    //             };
-    //             return Instruction(opcode_type, AddressMode::Immediate, n);
-    //         }
-    //         Operand::IndexX(opval) => {
-    //             let n = match opval {
-    //                 Opval::Identifier(identifier) => identifiers.get(&identifier).unwrap(),
-    //                 Opval::Literal(n) => n,
-    //             };
-    //         }
-    //         Operand::IndexY(opval) => {
-    //             let n = match opval {
-    //                 Opval::Identifier(identifier) => identifiers.get(&identifier).unwrap(),
-    //                 Opval::Literal(n) => n,
-    //             };
-    //         }
-    //         Operand::Indirect(opval) => {
-    //             let n = match opval {
-    //                 Opval::Identifier(identifier) => identifiers.get(&identifier).unwrap(),
-    //                 Opval::Literal(n) => n,
-    //             };
-    //         }
-    //         Operand::IndirectX(opval) => {
-    //             let n = match opval {
-    //                 Opval::Identifier(identifier) => identifiers.get(&identifier).unwrap(),
-    //                 Opval::Literal(n) => n,
-    //             };
-    //         }
-    //         Operand::IndirectY(opval) => {
-    //             let n = match opval {
-    //                 Opval::Identifier(identifier) => identifiers.get(&identifier).unwrap(),
-    //                 Opval::Literal(n) => n,
-    //             };
-    //         }
-    //         Operand::Direct(opval) => (),
-    //     }
-    // }
+                    match opval.to_numeric(&definitions).unwrap() {
+                        Numeric::Byte(_) => return AddressMode::ZeroPage,
+                        Numeric::Word(_) => return AddressMode::Absolute,
+                    }
+                }
+            }
+
+            panic!(
+                "incompatible operand {:?} for opcode type {:?}",
+                operand, opcode_type
+            );
+        })
+        .collect();
+
+    println!("{:?}", address_modes);
+
+    // generate instruction addresses
+    let instruction_addrs = address_modes
+        .iter()
+        .fold((Vec::new(), 0), |(mut accum, next), addr_mode| {
+            accum.push(next);
+            return (accum, next + 1 + addr_mode.operand_size());
+        })
+        .0;
+
+    // code generation
+    let mut code = Vec::new();
+    for (i, (&opcode_type, operand)) in instructions.iter().enumerate() {
+        let addr_mode = address_modes[i];
+
+        let num_opval = match addr_mode {
+            // Relative address modes treat reference operands as labels, and
+            // the encoded version should be a signed delta value.
+            AddressMode::Relative => {
+                match operand {
+                    Operand::Direct(opval) => {
+                        match opval {
+                            Opval::Reference(s) => {
+                                match labels.get(s) {
+                                    Some(&other_ins) => {
+                                        // The displacement operand is calculated
+                                        // relative to the next instruction.
+                                        let base_adr = instruction_addrs[i] + 2;
+                                        let other_addr = instruction_addrs[other_ins];
+
+                                        let delta = (base_adr as i64) - (other_addr as i64);
+                                        if delta < -128 || 127 < delta {
+                                            panic!("label {} is too far for relative address", s);
+                                        }
+
+                                        Some(Numeric::Byte(math::encode_i8_as_u8(delta as i8)))
+                                    }
+                                    None => panic!("can't find label {}", s),
+                                }
+                            }
+                            Opval::Literal(n) => Some(*n),
+                        }
+                    }
+                    _ => panic!(
+                        "invalid operand {:?} for opcode type {:?}",
+                        operand, opcode_type
+                    ),
+                }
+            }
+            _ => match operand {
+                Operand::None => None,
+                Operand::Immediate(opval) => Some(opval.to_numeric(&definitions).unwrap()),
+                Operand::IndexX(opval) => Some(opval.to_numeric(&definitions).unwrap()),
+                Operand::IndexY(opval) => Some(opval.to_numeric(&definitions).unwrap()),
+                Operand::Indirect(opval) => Some(opval.to_numeric(&definitions).unwrap()),
+                Operand::IndirectX(opval) => Some(opval.to_numeric(&definitions).unwrap()),
+                Operand::IndirectY(opval) => Some(opval.to_numeric(&definitions).unwrap()),
+                Operand::Direct(opval) => Some(opval.to_numeric(&definitions).unwrap()),
+            },
+        };
+
+        let operand_bytes = if let Some(n) = num_opval {
+            n.to_bytes()
+        } else {
+            Vec::new()
+        };
+
+        if operand_bytes.len() != addr_mode.operand_size() {
+            panic!(
+                "invalid size for operand {:?} for opcode type {:?}",
+                operand, opcode_type
+            );
+        }
+
+        // Write opcode
+        let oc = opcode::encode(opcode_type, addr_mode).unwrap();
+        code.push(oc);
+
+        // Write operand
+        for &v in operand_bytes.iter() {
+            code.push(v);
+        }
+    }
+
+    println!("{:?}", code);
 
     return code;
 }
@@ -377,7 +513,10 @@ pub fn assemble(src: &str) -> Vec<u8> {
 #[test]
 fn test() {
     let example = "; abc
-label:
+label1:
+dex
+rol
+rol $01
 lda #$0b ; hi
 
 define foobar $01
@@ -387,22 +526,27 @@ label2:
 adc $01
 adc $0101
 adc foobar
+adc barfoo
 adc $01,x
 adc $0101,x
 adc foobar,x
-adc $01,y
-adc $0101,y
-adc foobar,y
+adc barfoo,x
+ldx $01,y
+ldx $0101,y
+ldx foobar,y
+ldx barfoo,y
 adc #$01
 adc #foobar
-adc ($0101)
-adc (foobar)
+jmp ($0101)
+jmp (label2)
+jmp (barfoo)
 adc ($01,x)
 adc (foobar,x)
 adc ($01),y
 adc (foobar),y
+beq $01
+beq label1
 label3:
-dex
 ; yo
   ; yo
 label4:
