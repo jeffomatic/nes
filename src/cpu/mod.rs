@@ -1,4 +1,5 @@
 mod address_mode;
+mod assemble;
 mod instruction;
 mod opcode;
 mod operand;

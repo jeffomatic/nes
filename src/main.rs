@@ -1,3 +1,4 @@
+extern crate regex;
 extern crate sdl2;
 
 #[macro_use]

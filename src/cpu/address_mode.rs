@@ -1,5 +1,5 @@
 // Reference: http://obelisk.me.uk/6502/addressing.html
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum AddressMode {
     Implicit,
     Accumulator,

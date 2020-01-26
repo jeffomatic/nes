@@ -1,8 +1,9 @@
 use super::address_mode::AddressMode;
 use super::opcode;
+use std::collections::{HashMap, HashSet};
 
 // Reference: http://obelisk.me.uk/6502/reference.html
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Type {
     Adc, // Add with carry
     And, // Bitwise and
@@ -69,6 +70,38 @@ impl Type {
             _ => false,
         }
     }
+
+    pub fn compatible_with(self, addr_mode: AddressMode) -> bool {
+        lazy_static! {
+            static ref ADDRESS_MODES_BY_OPCODE_TYPE: HashMap<Type, HashSet<AddressMode>> = {
+                let mut map: HashMap<Type, HashSet<AddressMode>> = HashMap::new();
+                for opcode in opcode::OPCODES.iter() {
+                    let mut set = if let Some(existing) = map.get(&opcode.opcode_type) {
+                        existing.clone()
+                    } else {
+                        HashSet::new()
+                    };
+                    set.insert(opcode.addr_mode);
+                    map.insert(opcode.opcode_type, set);
+                }
+                map
+            };
+        }
+
+        ADDRESS_MODES_BY_OPCODE_TYPE
+            .get(&self)
+            .unwrap()
+            .contains(&addr_mode)
+    }
+}
+
+#[test]
+fn test_opcode_type_compatibility() {
+    assert_eq!(Type::Beq.compatible_with(AddressMode::Relative), true);
+    assert_eq!(Type::Beq.compatible_with(AddressMode::Implicit), false);
+    assert_eq!(Type::Jmp.compatible_with(AddressMode::Indirect), true);
+    assert_eq!(Type::Jmp.compatible_with(AddressMode::Absolute), true);
+    assert_eq!(Type::Jmp.compatible_with(AddressMode::IndirectX), false);
 }
 
 struct Opcode {
