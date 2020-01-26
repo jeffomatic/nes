@@ -113,8 +113,8 @@ lazy_static! {
         ^
         \$
         (?P<digits>
-            [a-eA-E0-9][a-eA-E0-9]
-            ([a-eA-E0-9][a-eA-E0-9])?
+            [a-fA-F0-9][a-fA-F0-9]
+            ([a-fA-F0-9][a-fA-F0-9])?
         )
         $
     "
@@ -301,7 +301,7 @@ fn parse_opval<'a>(src: &'a str) -> Result<Opval, Box<dyn Error>> {
 
 // TODO: return an actual error message.
 // TODO: prevent use of labels for indirect addressing
-pub fn assemble(src: &str) -> Vec<u8> {
+pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
     // collect statements
     let mut statements = Vec::new();
     for (i, line) in src.lines().enumerate() {
@@ -325,15 +325,16 @@ pub fn assemble(src: &str) -> Vec<u8> {
     }
 
     // setup tables for labels and definitions
-    let mut labels: HashMap<&str, usize> = HashMap::new();
+    let mut instruction_by_label: HashMap<&str, usize> = HashMap::new();
     let mut definitions: HashMap<&str, Numeric> = HashMap::new();
     let mut instructions = Vec::new();
+
     for s in statements.iter() {
         match s {
             Statement::Label(identifier) => {
-                let addr = instructions.len();
-                labels.insert(identifier, addr);
-                definitions.insert(identifier, Numeric::Word(addr as u16));
+                let n = instructions.len();
+                instruction_by_label.insert(identifier, n);
+                definitions.insert(identifier, Numeric::Word(base_reloc_addr + (n as u16)));
             }
             Statement::Definition(identifier, numeric) => {
                 definitions.insert(identifier, *numeric);
@@ -445,14 +446,21 @@ pub fn assemble(src: &str) -> Vec<u8> {
                     Operand::Direct(opval) => {
                         match opval {
                             Opval::Reference(s) => {
-                                match labels.get(s) {
+                                match instruction_by_label.get(s) {
                                     Some(&other_ins) => {
                                         // The displacement operand is calculated
                                         // relative to the next instruction.
-                                        let base_adr = instruction_addrs[i] + 2;
-                                        let other_addr = instruction_addrs[other_ins];
+                                        let a = instruction_addrs[i] + 2;
+                                        let last = instruction_addrs.len() - 1;
+                                        let b = if other_ins > last {
+                                            instruction_addrs[last]
+                                                + 1
+                                                + address_modes[last].operand_size()
+                                        } else {
+                                            instruction_addrs[other_ins]
+                                        };
 
-                                        let delta = (base_adr as i64) - (other_addr as i64);
+                                        let delta = (b as i64) - (a as i64);
                                         if delta < -128 || 127 < delta {
                                             panic!("label {} is too far for relative address", s);
                                         }
@@ -508,13 +516,43 @@ pub fn assemble(src: &str) -> Vec<u8> {
         }
     }
 
-    println!("{:?}", code);
-
     return code;
 }
 
 #[test]
 fn test() {
+    // comment/whitespac filtering
+    let asm = "
+
+; hi
+
+dex ;inline
+
+dex;inline
+
+  ; byte
+
+";
+    assert_eq!(assemble(asm, 0), vec![0xCA, 0xCA]);
+
+    // branch labels
+    let asm = "
+a:
+nop
+nop
+beq a
+beq b
+nop
+nop
+adc $01FF ; larger instruction size
+nop
+b:
+";
+    assert_eq!(
+        assemble(asm, 0),
+        vec![0xEA, 0xEA, 0xF0, 0xFC, 0xF0, 0x06, 0xEA, 0xEA, 0x6D, 0xFF, 0x01, 0xEA]
+    );
+
     let example = "; abc
 label1:
 dex
@@ -554,5 +592,5 @@ label3:
 label4:
 
 ";
-    assemble(example);
+    assemble(example, 0x600);
 }
