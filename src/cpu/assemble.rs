@@ -300,6 +300,7 @@ fn parse_opval<'a>(src: &'a str) -> Result<Opval, Box<dyn Error>> {
 }
 
 // TODO: return an actual error message.
+// TODO: prevent use of labels for indirect addressing
 pub fn assemble(src: &str) -> Vec<u8> {
     // collect statements
     let mut statements = Vec::new();
@@ -461,7 +462,9 @@ pub fn assemble(src: &str) -> Vec<u8> {
                                     None => panic!("can't find label {}", s),
                                 }
                             }
-                            Opval::Literal(n) => Some(*n),
+                            Opval::Literal(_) => {
+                                panic!("can't use literal {:?} for relative address mode", operand)
+                            }
                         }
                     }
                     _ => panic!(
@@ -544,7 +547,6 @@ adc ($01,x)
 adc (foobar,x)
 adc ($01),y
 adc (foobar),y
-beq $01
 beq label1
 label3:
 ; yo
