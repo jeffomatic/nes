@@ -536,97 +536,65 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
 
 #[test]
 fn test() {
-    // comment/whitespac filtering
+    // comment/whitespace filtering
     let asm = "
 
 ; hi
 
-dex ;inline
+nop ;inline
 
-dex;inline
+nop;inline
 
   ; byte
 
 ";
-    assert_eq!(assemble(asm, 0), vec![0xCA, 0xCA]);
+    assert_eq!(assemble(asm, 0), vec![0xEA, 0xEA]);
 
-    // definitions
     let asm = "
-define addr $ABCD
-jmp addr
-define a $01
-adc a,x
-ldx a,y
-";
-    assert_eq!(
-        assemble(asm, 0),
-        vec![0x4C, 0xCD, 0xAB, 0x75, 0x01, 0xB6, 0x01]
-    );
-
-    // labels
-    let asm = "
-a:
-nop
-nop
-b:
-beq a
-beq b
-beq c
-jmp a
-jmp b
-jmp c
-nop
-nop
-adc $01FF ; larger instruction size
-nop
-c:
+define addr $01FF
+define byte $69
+label_a: ; label at start
+dex ; implicit
+adc #$01 ; immediate literal
+adc #byte ; immediate ref
+adc $01 ; zero page literal
+adc byte ; zero page ref
+adc $01,x ; zero page x literal
+adc byte,x ; zero page x literal
+ldx $01,y ; zero page y literal
+ldx byte,y ; zero page y ref
+beq label_a ; branch to opening label
+beq label_b ; branch to intermediate label
+beq label_c ; branch to terminating label
+jmp $0101 ; jump to literal
+jmp addr ; jump to ref
+jmp label_a ; jump to opening label
+jmp label_b ; jump to intermediate label
+jmp label_c ; jump to terminating label
+jmp ($0101) ; indirect literal
+jmp (addr) ; indirect ref
+label_b: ; intermediate label
+adc $0101 ; absolute literal
+adc addr ; absolute ref
+adc $0101,x ; absolute x literal
+adc addr,x ; absolute x ref
+adc $0101,y ; absolute y literal
+adc addr,y ; absolute y ref
+adc ($01,x) ; indirect x literal
+adc (byte,x) ; indirect x ref
+adc ($01),y ; indirect y literal
+adc (byte),y ; indirect y ref
+label_c: ; terminal label
 ";
     assert_eq!(
         assemble(asm, 0x600),
         vec![
-            0xEA, 0xEA, 0xF0, 0xFC, 0xF0, 0xFC, 0xF0, 0x0F, 0x4C, 0x00, 0x06, 0x4C, 0x02, 0x06,
-            0x4C, 0x17, 0x06, 0xEA, 0xEA, 0x6D, 0xFF, 0x01, 0xEA
+            // hexdump generated via: https://skilldrick.github.io/easy6502
+            0xCA, 0x69, 0x01, 0x69, 0x69, 0x65, 0x01, 0x65, 0x69, 0x75, 0x01, 0x75, 0x69, 0xB6,
+            0x01, 0xB6, 0x69, 0xF0, 0xED, 0xF0, 0x17, 0xF0, 0x2F, 0x4C, 0x01, 0x01, 0x4C, 0xFF,
+            0x01, 0x4C, 0x00, 0x06, 0x4C, 0x2C, 0x06, 0x4C, 0x46, 0x06, 0x6C, 0x01, 0x01, 0x6C,
+            0xFF, 0x01, 0x6D, 0x01, 0x01, 0x6D, 0xFF, 0x01, 0x7D, 0x01, 0x01, 0x7D, 0xFF, 0x01,
+            0x79, 0x01, 0x01, 0x79, 0xFF, 0x01, 0x61, 0x01, 0x61, 0x69, 0x71, 0x01, 0x71, 0x69
         ]
     );
-
-    let example = "; abc
-label1:
-dex
-rol
-rol $01
-lda #$0b ; hi
-
-define foobar $01
-define barfoo $0101
-
-label2:
-adc $01
-adc $0101
-adc foobar
-adc barfoo
-adc $01,x
-adc $0101,x
-adc foobar,x
-adc barfoo,x
-ldx $01,y
-ldx $0101,y
-ldx foobar,y
-ldx barfoo,y
-adc #$01
-adc #foobar
-jmp ($0101)
-jmp (label2)
-jmp (barfoo)
-adc ($01,x)
-adc (foobar,x)
-adc ($01),y
-adc (foobar),y
-beq label1
-label3:
-; yo
-  ; yo
-label4:
-
-";
-    assemble(example, 0x600);
 }
