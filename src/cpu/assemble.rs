@@ -348,8 +348,8 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
         }
     }
 
-    // resolve definition references and assign address modes
-    // TODO: reduce code length and clean up error handling to track line numbers
+    // Infer address modes, which helps us determine exact instruction sizes
+    // and label addresses.
     let address_modes: Vec<AddressMode> = instructions
         .iter()
         .map(|(&opcode_type, operand)| {
