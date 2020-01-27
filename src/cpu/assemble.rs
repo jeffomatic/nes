@@ -82,13 +82,13 @@ impl fmt::Display for ParseError {
 }
 
 lazy_static! {
-    static ref LABEL_REGEX: Regex = Regex::new(r"^(?P<identifier>[_a-zA-Z]\w*):$").unwrap();
+    static ref LABEL_REGEX: Regex = Regex::new(r"^(?P<ident>[_a-zA-Z]\w*):$").unwrap();
     static ref DEFINITION_REGEX: Regex = Regex::new(
         r"(?x)
         ^
         define
         \s+
-        (?P<identifier>[a-zA-Z]\w*)
+        (?P<ident>[a-zA-Z]\w*)
         \s+
         (?P<value>\S+)
         $
@@ -130,12 +130,12 @@ lazy_static! {
 
 fn parse_statement<'a>(line: &'a str) -> Result<Statement<'a>, Box<dyn Error>> {
     if let Some(caps) = LABEL_REGEX.captures(line) {
-        return Ok(Statement::Label(caps.name("identifier").unwrap().as_str()));
+        return Ok(Statement::Label(caps.name("ident").unwrap().as_str()));
     }
 
     if let Some(caps) = DEFINITION_REGEX.captures(line) {
         return Ok(Statement::Definition(
-            caps.name("identifier").unwrap().as_str(),
+            caps.name("ident").unwrap().as_str(),
             parse_numeric(caps.name("value").unwrap().as_str())?,
         ));
     }
@@ -336,11 +336,11 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
 
     for s in statements.iter() {
         match s {
-            Statement::Label(identifier) => {
-                instructions_by_label.insert(identifier, instructions.len());
+            Statement::Label(label) => {
+                instructions_by_label.insert(label, instructions.len());
             }
-            Statement::Definition(identifier, numeric) => {
-                definitions.insert(identifier, *numeric);
+            Statement::Definition(ident, numeric) => {
+                definitions.insert(ident, *numeric);
             }
             Statement::Instruction(opcode_type, operand) => {
                 instructions.push((opcode_type, operand))
