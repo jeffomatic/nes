@@ -324,17 +324,20 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
         }
     }
 
+    // To ease calculations for jumps and branches to a label at the end of the
+    // source, we'll put a synthetic NOP at the end, and avoid emitting code at
+    // the end.
+    statements.push(Statement::Instruction(opcode::Type::Nop, Operand::None));
+
     // setup tables for labels and definitions
-    let mut instruction_by_label: HashMap<&str, usize> = HashMap::new();
+    let mut instructions_by_label: HashMap<&str, usize> = HashMap::new();
     let mut definitions: HashMap<&str, Numeric> = HashMap::new();
     let mut instructions = Vec::new();
 
     for s in statements.iter() {
         match s {
             Statement::Label(identifier) => {
-                let n = instructions.len();
-                instruction_by_label.insert(identifier, n);
-                definitions.insert(identifier, Numeric::Word(base_reloc_addr + (n as u16)));
+                instructions_by_label.insert(identifier, instructions.len());
             }
             Statement::Definition(identifier, numeric) => {
                 definitions.insert(identifier, *numeric);
@@ -404,10 +407,19 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                     }
                 }
                 Operand::Direct(opval) => {
+                    // branches
                     if opcode_type.compatible_with(AddressMode::Relative) {
                         return AddressMode::Relative;
                     }
 
+                    // jumps
+                    if let Opval::Reference(ident) = opval {
+                        if instructions_by_label.contains_key(ident) {
+                            return AddressMode::Absolute;
+                        }
+                    }
+
+                    // literals and references
                     match opval.to_numeric(&definitions).unwrap() {
                         Numeric::Byte(_) => return AddressMode::ZeroPage,
                         Numeric::Word(_) => return AddressMode::Absolute,
@@ -422,8 +434,6 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
         })
         .collect();
 
-    println!("{:?}", address_modes);
-
     // generate instruction addresses
     let instruction_addrs = address_modes
         .iter()
@@ -432,6 +442,19 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
             return (accum, next + 1 + addr_mode.operand_size());
         })
         .0;
+
+    // For jumps, insert each label as a 16-bit definition for the corresponding
+    // address.
+    for (label, ins) in instructions_by_label.iter() {
+        definitions.insert(
+            label,
+            Numeric::Word(base_reloc_addr + instruction_addrs[*ins] as u16),
+        );
+    }
+
+    // Remove the NOP inserted for dealing with labels that appear as the last
+    // statement.
+    instructions.pop();
 
     // code generation
     let mut code = Vec::new();
@@ -446,20 +469,12 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                     Operand::Direct(opval) => {
                         match opval {
                             Opval::Reference(s) => {
-                                match instruction_by_label.get(s) {
+                                match instructions_by_label.get(s) {
                                     Some(&other_ins) => {
                                         // The displacement operand is calculated
                                         // relative to the next instruction.
                                         let a = instruction_addrs[i] + 2;
-                                        let last = instruction_addrs.len() - 1;
-                                        let b = if other_ins > last {
-                                            instruction_addrs[last]
-                                                + 1
-                                                + address_modes[last].operand_size()
-                                        } else {
-                                            instruction_addrs[other_ins]
-                                        };
-
+                                        let b = instruction_addrs[other_ins];
                                         let delta = (b as i64) - (a as i64);
                                         if delta < -128 || 127 < delta {
                                             panic!("label {} is too far for relative address", s);
@@ -535,22 +550,43 @@ dex;inline
 ";
     assert_eq!(assemble(asm, 0), vec![0xCA, 0xCA]);
 
-    // branch labels
+    // definitions
+    let asm = "
+define addr $ABCD
+jmp addr
+define a $01
+adc a,x
+ldx a,y
+";
+    assert_eq!(
+        assemble(asm, 0),
+        vec![0x4C, 0xCD, 0xAB, 0x75, 0x01, 0xB6, 0x01]
+    );
+
+    // labels
     let asm = "
 a:
 nop
 nop
+b:
 beq a
 beq b
+beq c
+jmp a
+jmp b
+jmp c
 nop
 nop
 adc $01FF ; larger instruction size
 nop
-b:
+c:
 ";
     assert_eq!(
-        assemble(asm, 0),
-        vec![0xEA, 0xEA, 0xF0, 0xFC, 0xF0, 0x06, 0xEA, 0xEA, 0x6D, 0xFF, 0x01, 0xEA]
+        assemble(asm, 0x600),
+        vec![
+            0xEA, 0xEA, 0xF0, 0xFC, 0xF0, 0xFC, 0xF0, 0x0F, 0x4C, 0x00, 0x06, 0x4C, 0x02, 0x06,
+            0x4C, 0x17, 0x06, 0xEA, 0xEA, 0x6D, 0xFF, 0x01, 0xEA
+        ]
     );
 
     let example = "; abc
