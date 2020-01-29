@@ -198,6 +198,7 @@ fn parse_statement<'a>(src: &'a str) -> Result<Statement<'a>, Error> {
 fn parse_numeric(src: &str) -> Result<Numeric, Error> {
     if let Some(caps) = NUMERIC_REGEX.captures(src) {
         let digits = caps.name("digits").unwrap().as_str();
+
         if digits.len() == 2 {
             match u8::from_str_radix(digits, 16) {
                 Ok(n) => return Ok(Numeric::Byte(n)),
@@ -206,15 +207,10 @@ fn parse_numeric(src: &str) -> Result<Numeric, Error> {
         }
 
         if digits.len() == 4 {
-            let hi = match u8::from_str_radix(&digits[0..2], 16) {
-                Ok(n) => n,
+            match u16::from_str_radix(digits, 16) {
+                Ok(n) => return Ok(Numeric::Word(n)),
                 _ => return Err(Error::InvalidNumeric(src.to_string())),
-            };
-            let lo = match u8::from_str_radix(&digits[2..4], 16) {
-                Ok(n) => n,
-                _ => return Err(Error::InvalidNumeric(src.to_string())),
-            };
-            return Ok(Numeric::Word(math::bytes_to_u16_le([lo, hi])));
+            }
         }
     }
 
