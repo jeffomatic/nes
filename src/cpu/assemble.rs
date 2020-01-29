@@ -32,7 +32,7 @@ enum Opval<'a> {
 }
 
 impl<'a> Opval<'a> {
-    pub fn to_numeric(&self, symbols: &dyn SymbolTable<'a>) -> Result<Numeric, ParseError> {
+    pub fn to_numeric(&self, symbols: &dyn SymbolTable) -> Result<Numeric, ParseError> {
         match self {
             Self::Reference(s) => {
                 if let Some(n) = symbols.get(s) {
@@ -71,22 +71,22 @@ impl Numeric {
     }
 }
 
-trait SymbolTable<'a> {
-    fn get(&self, symbol: &'a str) -> Option<Numeric>;
+trait SymbolTable {
+    fn get(&self, symbol: &str) -> Option<Numeric>;
 }
 
 struct MapSymbolTable<'a>(HashMap<&'a str, Numeric>);
 
-impl<'a> SymbolTable<'a> for MapSymbolTable<'a> {
-    fn get(&self, symbol: &'a str) -> Option<Numeric> {
+impl<'a> SymbolTable for MapSymbolTable<'a> {
+    fn get(&self, symbol: &str) -> Option<Numeric> {
         self.0.get(symbol).map(|n| *n)
     }
 }
 
-struct CompositeSymbolTable<'a>(Vec<&'a dyn SymbolTable<'a>>);
+struct CompositeSymbolTable<'a>(Vec<&'a dyn SymbolTable>);
 
-impl<'a> SymbolTable<'a> for CompositeSymbolTable<'a> {
-    fn get(&self, symbol: &'a str) -> Option<Numeric> {
+impl<'a> SymbolTable for CompositeSymbolTable<'a> {
+    fn get(&self, symbol: &str) -> Option<Numeric> {
         for m in self.0.iter() {
             let n = m.get(symbol);
             match n {
@@ -190,7 +190,7 @@ fn parse_statement<'a>(line: &'a str) -> Result<Statement<'a>, Box<dyn Error>> {
     }))
 }
 
-fn parse_numeric<'a>(src: &'a str) -> Result<Numeric, Box<dyn Error>> {
+fn parse_numeric(src: &str) -> Result<Numeric, Box<dyn Error>> {
     if let Some(caps) = NUMERIC_REGEX.captures(src) {
         let digits = caps.name("digits").unwrap().as_str();
         if digits.len() == 2 {
@@ -210,7 +210,7 @@ fn parse_numeric<'a>(src: &'a str) -> Result<Numeric, Box<dyn Error>> {
     }))
 }
 
-fn parse_mnemonic<'a>(src: &'a str) -> Result<opcode::Type, Box<dyn Error>> {
+fn parse_mnemonic(src: &str) -> Result<opcode::Type, Box<dyn Error>> {
     match src.to_ascii_uppercase().as_str() {
         "ADC" => Ok(opcode::Type::Adc),
         "AND" => Ok(opcode::Type::And),
@@ -275,7 +275,7 @@ fn parse_mnemonic<'a>(src: &'a str) -> Result<opcode::Type, Box<dyn Error>> {
     }
 }
 
-fn parse_operand<'a>(src: &'a str) -> Result<Operand, Box<dyn Error>> {
+fn parse_operand<'a>(src: &'a str) -> Result<Operand<'a>, Box<dyn Error>> {
     if let Some(caps) = IMMEDIATE_REGEX.captures(src) {
         let opval = parse_opval(caps.name("opval").unwrap().as_str())?;
         return Ok(Operand::Immediate(opval));
@@ -316,7 +316,7 @@ fn parse_operand<'a>(src: &'a str) -> Result<Operand, Box<dyn Error>> {
     }))
 }
 
-fn parse_opval<'a>(src: &'a str) -> Result<Opval, Box<dyn Error>> {
+fn parse_opval<'a>(src: &'a str) -> Result<Opval<'a>, Box<dyn Error>> {
     if let Some(caps) = IDENTIFIER_REGEX.captures(src) {
         return Ok(Opval::Reference(caps.name("value").unwrap().as_str()));
     }
