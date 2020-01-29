@@ -463,7 +463,7 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                                             panic!("label {} is too far for relative address", s);
                                         }
 
-                                        Some(Numeric::Byte(math::encode_i8_as_u8(delta as i8)))
+                                        Some(Numeric::Byte((delta as i8).to_le_bytes()[0]))
                                     }
                                     None => panic!("can't find label {}", s),
                                 }

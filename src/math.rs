@@ -58,20 +58,3 @@ pub fn test_hi_lo() {
 pub fn page_crossing(x: u16, y: u16) -> bool {
     x & 0xFF00 != y & 0xFF00
 }
-
-pub fn encode_i8_as_u8(x: i8) -> u8 {
-    if x < 0 {
-        0u8.wrapping_sub((-1 * (x as i16)) as u8)
-    } else {
-        x as u8
-    }
-}
-
-#[test]
-fn test_encode_i8_as_u8() {
-    assert_eq!(encode_i8_as_u8(127), 0x7F);
-    assert_eq!(encode_i8_as_u8(-128), 0x80);
-    assert_eq!(encode_i8_as_u8(0), 0);
-    assert_eq!(encode_i8_as_u8(1), 1);
-    assert_eq!(encode_i8_as_u8(-1), 0xFF);
-}
