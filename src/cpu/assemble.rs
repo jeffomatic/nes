@@ -3,7 +3,7 @@ use super::opcode;
 use crate::math;
 use regex::Regex;
 use std::collections::HashMap;
-use std::error::Error;
+use std::error;
 use std::fmt;
 
 #[derive(Debug)]
@@ -32,16 +32,13 @@ enum Opval<'a> {
 }
 
 impl<'a> Opval<'a> {
-    pub fn to_numeric(&self, symbols: &dyn SymbolTable) -> Result<Numeric, ParseError> {
+    pub fn to_numeric(&self, symbols: &dyn SymbolTable) -> Result<Numeric, Error> {
         match self {
             Self::Reference(s) => {
                 if let Some(n) = symbols.get(s) {
                     Ok(n)
                 } else {
-                    Err(ParseError {
-                        msg: format!("no definition found for \"{}\"", s),
-                        src: String::from(""),
-                    })
+                    Err(Error::SymbolNotFound(s.to_string()))
                 }
             }
             Self::Literal(n) => Ok(*n),
@@ -100,16 +97,27 @@ impl<'a> SymbolTable for CompositeSymbolTable<'a> {
 }
 
 #[derive(Debug)]
-struct ParseError {
-    msg: String,
-    src: String,
+enum Error {
+    InvalidStatement(String),
+    InvalidNumeric(String),
+    InvalidMnemonic(String),
+    InvalidOperand(String),
+    InvalidOpval(String),
+    SymbolNotFound(String),
 }
 
-impl Error for ParseError {}
+impl error::Error for Error {}
 
-impl fmt::Display for ParseError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n{}", self.msg, self.src)
+        match self {
+            Self::InvalidStatement(src) => write!(f, "invalid statement: {}", src),
+            Self::InvalidNumeric(src) => write!(f, "invalid numeric: {}", src),
+            Self::InvalidMnemonic(src) => write!(f, "invalid mnemonic: {}", src),
+            Self::InvalidOperand(src) => write!(f, "invalid operand: {}", src),
+            Self::InvalidOpval(src) => write!(f, "invalid opval: {}", src),
+            Self::SymbolNotFound(src) => write!(f, "symbol not found: {}", src),
+        }
     }
 }
 
@@ -160,19 +168,19 @@ lazy_static! {
     static ref INDIRECT_Y_REGEX: Regex = Regex::new(r"^\((?P<opval>\$?\w+)\),[yY]$").unwrap();
 }
 
-fn parse_statement<'a>(line: &'a str) -> Result<Statement<'a>, Box<dyn Error>> {
-    if let Some(caps) = LABEL_REGEX.captures(line) {
+fn parse_statement<'a>(src: &'a str) -> Result<Statement<'a>, Error> {
+    if let Some(caps) = LABEL_REGEX.captures(src) {
         return Ok(Statement::Label(caps.name("ident").unwrap().as_str()));
     }
 
-    if let Some(caps) = DEFINITION_REGEX.captures(line) {
+    if let Some(caps) = DEFINITION_REGEX.captures(src) {
         return Ok(Statement::Definition(
             caps.name("ident").unwrap().as_str(),
             parse_numeric(caps.name("value").unwrap().as_str())?,
         ));
     }
 
-    if let Some(caps) = INSTRUCTION_REGEX.captures(line) {
+    if let Some(caps) = INSTRUCTION_REGEX.captures(src) {
         let mut operand = Operand::None;
         if let Some(operand_src) = caps.name("operand") {
             operand = parse_operand(operand_src.as_str())?;
@@ -184,33 +192,36 @@ fn parse_statement<'a>(line: &'a str) -> Result<Statement<'a>, Box<dyn Error>> {
         ));
     }
 
-    Err(Box::new(ParseError {
-        msg: String::from("invalid statement"),
-        src: line.to_string(),
-    }))
+    Err(Error::InvalidStatement(src.to_string()))
 }
 
-fn parse_numeric(src: &str) -> Result<Numeric, Box<dyn Error>> {
+fn parse_numeric(src: &str) -> Result<Numeric, Error> {
     if let Some(caps) = NUMERIC_REGEX.captures(src) {
         let digits = caps.name("digits").unwrap().as_str();
         if digits.len() == 2 {
-            return Ok(Numeric::Byte(u8::from_str_radix(digits, 16)?));
+            match u8::from_str_radix(digits, 16) {
+                Ok(n) => return Ok(Numeric::Byte(n)),
+                _ => return Err(Error::InvalidNumeric(src.to_string())),
+            }
         }
 
         if digits.len() == 4 {
-            let hi = u8::from_str_radix(&digits[0..2], 16)?;
-            let lo = u8::from_str_radix(&digits[2..4], 16)?;
+            let hi = match u8::from_str_radix(&digits[0..2], 16) {
+                Ok(n) => n,
+                _ => return Err(Error::InvalidNumeric(src.to_string())),
+            };
+            let lo = match u8::from_str_radix(&digits[2..4], 16) {
+                Ok(n) => n,
+                _ => return Err(Error::InvalidNumeric(src.to_string())),
+            };
             return Ok(Numeric::Word(math::bytes_to_u16_le([lo, hi])));
         }
     }
 
-    Err(Box::new(ParseError {
-        msg: String::from("invalid literal"),
-        src: src.to_string(),
-    }))
+    Err(Error::InvalidNumeric(src.to_string()))
 }
 
-fn parse_mnemonic(src: &str) -> Result<opcode::Type, Box<dyn Error>> {
+fn parse_mnemonic(src: &str) -> Result<opcode::Type, Error> {
     match src.to_ascii_uppercase().as_str() {
         "ADC" => Ok(opcode::Type::Adc),
         "AND" => Ok(opcode::Type::And),
@@ -268,14 +279,11 @@ fn parse_mnemonic(src: &str) -> Result<opcode::Type, Box<dyn Error>> {
         "TXA" => Ok(opcode::Type::Txa),
         "TXS" => Ok(opcode::Type::Txs),
         "TYA" => Ok(opcode::Type::Tya),
-        _ => Err(Box::new(ParseError {
-            msg: String::from("invalid opcode"),
-            src: src.to_string(),
-        })),
+        _ => Err(Error::InvalidMnemonic(src.to_string())),
     }
 }
 
-fn parse_operand<'a>(src: &'a str) -> Result<Operand<'a>, Box<dyn Error>> {
+fn parse_operand<'a>(src: &'a str) -> Result<Operand<'a>, Error> {
     if let Some(caps) = IMMEDIATE_REGEX.captures(src) {
         let opval = parse_opval(caps.name("opval").unwrap().as_str())?;
         return Ok(Operand::Immediate(opval));
@@ -310,13 +318,10 @@ fn parse_operand<'a>(src: &'a str) -> Result<Operand<'a>, Box<dyn Error>> {
         return Ok(Operand::Direct(opval));
     }
 
-    Err(Box::new(ParseError {
-        msg: String::from("invalid operand"),
-        src: src.to_string(),
-    }))
+    Err(Error::InvalidOperand(src.to_string()))
 }
 
-fn parse_opval<'a>(src: &'a str) -> Result<Opval<'a>, Box<dyn Error>> {
+fn parse_opval<'a>(src: &'a str) -> Result<Opval<'a>, Error> {
     if let Some(caps) = IDENTIFIER_REGEX.captures(src) {
         return Ok(Opval::Reference(caps.name("value").unwrap().as_str()));
     }
@@ -325,10 +330,7 @@ fn parse_opval<'a>(src: &'a str) -> Result<Opval<'a>, Box<dyn Error>> {
         return Ok(Opval::Literal(numeric));
     }
 
-    Err(Box::new(ParseError {
-        msg: String::from("invalid opval"),
-        src: src.to_string(),
-    }))
+    Err(Error::InvalidOpval(src.to_string()))
 }
 
 // TODO: return an actual error message.
