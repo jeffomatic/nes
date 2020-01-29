@@ -92,6 +92,10 @@ impl Type {
             .unwrap()
             .contains(&addr_mode)
     }
+
+    pub fn is_jump(self) -> bool {
+        self.compatible_with(AddressMode::Indirect)
+    }
 }
 
 #[test]

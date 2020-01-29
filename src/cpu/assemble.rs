@@ -31,15 +31,12 @@ enum Opval<'a> {
     Literal(Numeric),
 }
 
-impl Opval<'_> {
-    pub fn to_numeric<'a>(
-        &self,
-        definitions: &HashMap<&'a str, Numeric>,
-    ) -> Result<Numeric, ParseError> {
+impl<'a> Opval<'a> {
+    pub fn to_numeric(&self, symbols: &dyn SymbolTable<'a>) -> Result<Numeric, ParseError> {
         match self {
             Self::Reference(s) => {
-                if let Some(n) = definitions.get(s) {
-                    Ok(*n)
+                if let Some(n) = symbols.get(s) {
+                    Ok(n)
                 } else {
                     Err(ParseError {
                         msg: format!("no definition found for \"{}\"", s),
@@ -64,6 +61,41 @@ impl Numeric {
             Self::Byte(n) => vec![n],
             Self::Word(n) => math::u16_to_bytes_le(n).iter().cloned().collect(),
         }
+    }
+
+    fn to_u16(self) -> Option<u16> {
+        match self {
+            Self::Byte(_) => None,
+            Self::Word(n) => Some(n),
+        }
+    }
+}
+
+trait SymbolTable<'a> {
+    fn get(&self, symbol: &'a str) -> Option<Numeric>;
+}
+
+struct MapSymbolTable<'a>(HashMap<&'a str, Numeric>);
+
+impl<'a> SymbolTable<'a> for MapSymbolTable<'a> {
+    fn get(&self, symbol: &'a str) -> Option<Numeric> {
+        self.0.get(symbol).map(|n| *n)
+    }
+}
+
+struct CompositeSymbolTable<'a>(Vec<&'a dyn SymbolTable<'a>>);
+
+impl<'a> SymbolTable<'a> for CompositeSymbolTable<'a> {
+    fn get(&self, symbol: &'a str) -> Option<Numeric> {
+        for m in self.0.iter() {
+            let n = m.get(symbol);
+            match n {
+                Some(_) => return n,
+                None => (),
+            }
+        }
+
+        None
     }
 }
 
@@ -300,7 +332,6 @@ fn parse_opval<'a>(src: &'a str) -> Result<Opval, Box<dyn Error>> {
 }
 
 // TODO: return an actual error message.
-// TODO: prevent use of labels for indirect addressing
 pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
     // collect statements
     let mut statements = Vec::new();
@@ -348,6 +379,8 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
         }
     }
 
+    let def_symbols = MapSymbolTable(definitions);
+
     // Infer address modes, which helps us determine exact instruction sizes
     // and label addresses.
     let address_modes: Vec<AddressMode> = instructions
@@ -367,7 +400,7 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                         return AddressMode::Immediate;
                     }
                 }
-                Operand::IndexX(opval) => match opval.to_numeric(&definitions).unwrap() {
+                Operand::IndexX(opval) => match opval.to_numeric(&def_symbols).unwrap() {
                     Numeric::Byte(_) => {
                         if opcode_type.compatible_with(AddressMode::ZeroPageX) {
                             return AddressMode::ZeroPageX;
@@ -379,7 +412,7 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                         }
                     }
                 },
-                Operand::IndexY(opval) => match opval.to_numeric(&definitions).unwrap() {
+                Operand::IndexY(opval) => match opval.to_numeric(&def_symbols).unwrap() {
                     Numeric::Byte(_) => {
                         if opcode_type.compatible_with(AddressMode::ZeroPageY) {
                             return AddressMode::ZeroPageY;
@@ -420,7 +453,7 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                     }
 
                     // literals and references
-                    match opval.to_numeric(&definitions).unwrap() {
+                    match opval.to_numeric(&def_symbols).unwrap() {
                         Numeric::Byte(_) => return AddressMode::ZeroPage,
                         Numeric::Word(_) => return AddressMode::Absolute,
                     }
@@ -437,20 +470,24 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
     // generate instruction addresses
     let instruction_addrs = address_modes
         .iter()
-        .fold((Vec::new(), 0), |(mut accum, next), addr_mode| {
-            accum.push(next);
-            return (accum, next + 1 + addr_mode.operand_size());
-        })
+        .fold(
+            (Vec::new(), base_reloc_addr),
+            |(mut accum, next), addr_mode| {
+                accum.push(next);
+                return (accum, next + 1 + addr_mode.operand_size() as u16);
+            },
+        )
         .0;
 
-    // For jumps, insert each label as a 16-bit definition for the corresponding
-    // address.
+    // For jumps/branches, we want additional symbol table that maps labels to
+    // relocated addresses.
+    let mut addrs_by_label = HashMap::new();
     for (label, ins) in instructions_by_label.iter() {
-        definitions.insert(
-            label,
-            Numeric::Word(base_reloc_addr + instruction_addrs[*ins] as u16),
-        );
+        addrs_by_label.insert(*label, Numeric::Word(instruction_addrs[*ins]));
     }
+
+    let label_symbols = MapSymbolTable(addrs_by_label);
+    let all_symbols = CompositeSymbolTable(vec![&label_symbols, &def_symbols]);
 
     // Remove the NOP inserted for dealing with labels that appear as the last
     // statement.
@@ -469,13 +506,12 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                     Operand::Direct(opval) => {
                         match opval {
                             Opval::Reference(s) => {
-                                match instructions_by_label.get(s) {
-                                    Some(&other_ins) => {
+                                match label_symbols.get(s) {
+                                    Some(dest) => {
                                         // The displacement operand is calculated
                                         // relative to the next instruction.
-                                        let a = instruction_addrs[i] + 2;
-                                        let b = instruction_addrs[other_ins];
-                                        let delta = (b as i64) - (a as i64);
+                                        let src = instruction_addrs[i] + 2;
+                                        let delta = (dest.to_u16().unwrap() as i64) - (src as i64);
                                         if delta < -128 || 127 < delta {
                                             panic!("label {} is too far for relative address", s);
                                         }
@@ -498,13 +534,21 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
             }
             _ => match operand {
                 Operand::None => None,
-                Operand::Immediate(opval) => Some(opval.to_numeric(&definitions).unwrap()),
-                Operand::IndexX(opval) => Some(opval.to_numeric(&definitions).unwrap()),
-                Operand::IndexY(opval) => Some(opval.to_numeric(&definitions).unwrap()),
-                Operand::Indirect(opval) => Some(opval.to_numeric(&definitions).unwrap()),
-                Operand::IndirectX(opval) => Some(opval.to_numeric(&definitions).unwrap()),
-                Operand::IndirectY(opval) => Some(opval.to_numeric(&definitions).unwrap()),
-                Operand::Direct(opval) => Some(opval.to_numeric(&definitions).unwrap()),
+                Operand::Immediate(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
+                Operand::IndexX(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
+                Operand::IndexY(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
+                Operand::Indirect(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
+                Operand::IndirectX(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
+                Operand::IndirectY(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
+                Operand::Direct(opval) => {
+                    // Jumps can use labels.
+                    let symbols: &dyn SymbolTable = if opcode_type.is_jump() {
+                        &all_symbols
+                    } else {
+                        &def_symbols
+                    };
+                    Some(opval.to_numeric(symbols).unwrap())
+                }
             },
         };
 
