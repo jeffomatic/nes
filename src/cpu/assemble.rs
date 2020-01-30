@@ -43,7 +43,7 @@ impl<'a> Opval<'a> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum Numeric {
     Byte(u8),
     Word(u16),
@@ -93,7 +93,7 @@ impl<'a> SymbolTable for CompositeSymbolTable<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum Error {
     InvalidStatement(String),
     InvalidNumeric(String),
@@ -102,6 +102,9 @@ enum Error {
     InvalidOpval(String),
     SymbolNotFound(String),
     NoValidAddressMode(opcode::Type, String),
+    BranchLabelTooFar(String),
+    LiteralInBranch(Numeric),
+    InvalidOperandSize(AddressMode, String, usize),
 }
 
 impl error::Error for Error {}
@@ -119,6 +122,15 @@ impl fmt::Display for Error {
                 f,
                 "no valid address mode for opcode type {:?} and operand {}",
                 opcode_type, operand_str
+            ),
+            Self::BranchLabelTooFar(symbol) => write!(f, "label too far from branch: {}", symbol),
+            Self::LiteralInBranch(numeric) => {
+                write!(f, "literal value used in branch: {:?}", numeric)
+            }
+            Self::InvalidOperandSize(addr_mode, operand_str, size) => write!(
+                f,
+                "operand {} has invalid size ({}) for address mode {:?}",
+                operand_str, size, addr_mode
             ),
         }
     }
@@ -203,17 +215,11 @@ fn parse_numeric(src: &str) -> Result<Numeric, Error> {
         let digits = caps.name("digits").unwrap().as_str();
 
         if digits.len() == 2 {
-            match u8::from_str_radix(digits, 16) {
-                Ok(n) => return Ok(Numeric::Byte(n)),
-                _ => return Err(Error::InvalidNumeric(src.to_string())),
-            }
+            return Ok(Numeric::Byte(u8::from_str_radix(digits, 16).unwrap()));
         }
 
         if digits.len() == 4 {
-            match u16::from_str_radix(digits, 16) {
-                Ok(n) => return Ok(Numeric::Word(n)),
-                _ => return Err(Error::InvalidNumeric(src.to_string())),
-            }
+            return Ok(Numeric::Word(u16::from_str_radix(digits, 16).unwrap()));
         }
     }
 
@@ -361,10 +367,10 @@ fn infer_address_mode(
 }
 
 // TODO: return an actual error message.
-pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
+fn assemble(src: &str, base_reloc_addr: u16) -> Result<Vec<u8>, Error> {
     // collect statements
     let mut statements = Vec::new();
-    for (i, line) in src.lines().enumerate() {
+    for line in src.lines() {
         let line = line.trim();
 
         // strip comments
@@ -377,10 +383,7 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
             continue;
         }
 
-        match parse_statement(line) {
-            Ok(s) => statements.push(s),
-            Err(e) => panic!("error on line {}: {:?}\n{}", i, e, line),
-        }
+        statements.push(parse_statement(line)?);
     }
 
     // To ease calculations for jumps and branches to a label at the end of the
@@ -411,12 +414,10 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
 
     // Infer address modes, which helps us determine exact instruction sizes
     // and label addresses.
-    let address_modes: Vec<AddressMode> = instructions
-        .iter()
-        .map(|(&opcode_type, operand)| {
-            infer_address_mode(opcode_type, &operand, &def_symbols).unwrap()
-        })
-        .collect();
+    let mut address_modes = Vec::new();
+    for (&opcode_type, operand) in instructions.iter() {
+        address_modes.push(infer_address_mode(opcode_type, &operand, &def_symbols)?);
+    }
 
     // generate instruction addresses
     let instruction_addrs = address_modes
@@ -464,16 +465,16 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                                         let src = instruction_addrs[i] + 2;
                                         let delta = (dest.to_u16().unwrap() as i64) - (src as i64);
                                         if delta < -128 || 127 < delta {
-                                            panic!("label {} is too far for relative address", s);
+                                            return Err(Error::BranchLabelTooFar(s.to_string()));
                                         }
 
                                         Some(Numeric::Byte((delta as i8).to_le_bytes()[0]))
                                     }
-                                    None => panic!("can't find label {}", s),
+                                    None => return Err(Error::SymbolNotFound(s.to_string())),
                                 }
                             }
-                            Opval::Literal(_) => {
-                                panic!("can't use literal {:?} for relative address mode", operand)
+                            Opval::Literal(n) => {
+                                return Err(Error::LiteralInBranch(*n));
                             }
                         }
                     }
@@ -485,12 +486,12 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
             }
             _ => match operand {
                 Operand::None => None,
-                Operand::Immediate(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
-                Operand::IndexX(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
-                Operand::IndexY(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
-                Operand::Indirect(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
-                Operand::IndirectX(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
-                Operand::IndirectY(opval) => Some(opval.to_numeric(&def_symbols).unwrap()),
+                Operand::Immediate(opval)
+                | Operand::IndexX(opval)
+                | Operand::IndexY(opval)
+                | Operand::Indirect(opval)
+                | Operand::IndirectX(opval)
+                | Operand::IndirectY(opval) => Some(opval.to_numeric(&def_symbols)?),
                 Operand::Direct(opval) => {
                     // Jumps can use labels.
                     let symbols: &dyn SymbolTable = if opcode_type.is_jump() {
@@ -498,7 +499,7 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                     } else {
                         &def_symbols
                     };
-                    Some(opval.to_numeric(symbols).unwrap())
+                    Some(opval.to_numeric(symbols)?)
                 }
             },
         };
@@ -509,10 +510,11 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
         };
 
         if operand_bytes.len() != addr_mode.operand_size() {
-            panic!(
-                "invalid size for operand {:?} for opcode type {:?}",
-                operand, opcode_type
-            );
+            return Err(Error::InvalidOperandSize(
+                addr_mode,
+                format!("{:?}", operand),
+                operand_bytes.len(),
+            ));
         }
 
         // Write opcode
@@ -525,7 +527,7 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
         }
     }
 
-    return code;
+    return Ok(code);
 }
 
 #[test]
@@ -542,7 +544,7 @@ nop;inline
   ; byte
 
 ";
-    assert_eq!(assemble(asm, 0), vec![0xEA, 0xEA]);
+    assert_eq!(assemble(asm, 0).unwrap(), vec![0xEA, 0xEA]);
 
     let asm = "
 define addr $01FF
@@ -581,7 +583,7 @@ adc (byte),y ; indirect y ref
 label_c: ; terminal label
 ";
     assert_eq!(
-        assemble(asm, 0x600),
+        assemble(asm, 0x600).unwrap(),
         vec![
             // hexdump generated via: https://skilldrick.github.io/easy6502
             0xCA, 0x69, 0x01, 0x69, 0x69, 0x65, 0x01, 0x65, 0x69, 0x75, 0x01, 0x75, 0x69, 0xB6,
@@ -590,5 +592,51 @@ label_c: ; terminal label
             0xFF, 0x01, 0x6D, 0x01, 0x01, 0x6D, 0xFF, 0x01, 0x7D, 0x01, 0x01, 0x7D, 0xFF, 0x01,
             0x79, 0x01, 0x01, 0x79, 0xFF, 0x01, 0x61, 0x01, 0x61, 0x69, 0x71, 0x01, 0x71, 0x69
         ]
+    );
+
+    // errors
+    assert_eq!(
+        assemble("def x y ; no such statement structure", 0),
+        Err(Error::InvalidStatement(String::from("def x y")))
+    );
+    assert_eq!(
+        assemble("define x 1234 ; missing dollar sign", 0),
+        Err(Error::InvalidNumeric(String::from("1234")))
+    );
+    assert_eq!(
+        assemble("abc ; no such mnemonic", 0),
+        Err(Error::InvalidMnemonic(String::from("abc")))
+    );
+    assert_eq!(
+        assemble("adc *foo", 0),
+        Err(Error::InvalidOperand(String::from("*foo")))
+    );
+    // assemble() does not directly return Error::InvalidOpval
+    assert_eq!(
+        assemble("adc #foobar", 0),
+        Err(Error::SymbolNotFound(String::from("foobar")))
+    );
+    assert_eq!(
+        assemble("adc ($1000)", 0),
+        Err(Error::NoValidAddressMode(
+            opcode::Type::Adc,
+            String::from("Indirect(Literal(Word(4096)))")
+        ))
+    );
+    assert_eq!(
+        assemble(&("a:\n".to_string() + &"nop\n".repeat(127) + "beq a"), 0),
+        Err(Error::BranchLabelTooFar(String::from("a")))
+    );
+    assert_eq!(
+        assemble("beq $01", 0),
+        Err(Error::LiteralInBranch(Numeric::Byte(1)))
+    );
+    assert_eq!(
+        assemble("adc ($1010,x)", 0),
+        Err(Error::InvalidOperandSize(
+            AddressMode::IndirectX,
+            "IndirectX(Literal(Word(4112)))".to_string(),
+            2
+        ))
     );
 }
