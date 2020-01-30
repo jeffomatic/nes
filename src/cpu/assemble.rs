@@ -101,6 +101,7 @@ enum Error {
     InvalidOperand(String),
     InvalidOpval(String),
     SymbolNotFound(String),
+    NoValidAddressMode(opcode::Type, String),
 }
 
 impl error::Error for Error {}
@@ -114,6 +115,11 @@ impl fmt::Display for Error {
             Self::InvalidOperand(src) => write!(f, "invalid operand: {}", src),
             Self::InvalidOpval(src) => write!(f, "invalid opval: {}", src),
             Self::SymbolNotFound(src) => write!(f, "symbol not found: {}", src),
+            Self::NoValidAddressMode(opcode_type, operand_str) => write!(
+                f,
+                "no valid address mode for opcode type {:?} and operand {}",
+                opcode_type, operand_str
+            ),
         }
     }
 }
@@ -271,6 +277,89 @@ fn parse_opval<'a>(src: &'a str) -> Result<Opval<'a>, Error> {
     Err(Error::InvalidOpval(src.to_string()))
 }
 
+fn infer_address_mode(
+    opcode_type: opcode::Type,
+    operand: &Operand,
+    symbols: &dyn SymbolTable,
+) -> Result<AddressMode, Error> {
+    match operand {
+        Operand::None => {
+            if opcode_type.compatible_with(AddressMode::Implicit) {
+                return Ok(AddressMode::Implicit);
+            }
+            if opcode_type.compatible_with(AddressMode::Accumulator) {
+                return Ok(AddressMode::Accumulator);
+            }
+        }
+        Operand::Immediate(_) => {
+            if opcode_type.compatible_with(AddressMode::Immediate) {
+                return Ok(AddressMode::Immediate);
+            }
+        }
+        Operand::IndexX(opval) => match opval.to_numeric(symbols)? {
+            Numeric::Byte(_) => {
+                if opcode_type.compatible_with(AddressMode::ZeroPageX) {
+                    return Ok(AddressMode::ZeroPageX);
+                }
+            }
+            Numeric::Word(_) => {
+                if opcode_type.compatible_with(AddressMode::AbsoluteX) {
+                    return Ok(AddressMode::AbsoluteX);
+                }
+            }
+        },
+        Operand::IndexY(opval) => match opval.to_numeric(symbols)? {
+            Numeric::Byte(_) => {
+                if opcode_type.compatible_with(AddressMode::ZeroPageY) {
+                    return Ok(AddressMode::ZeroPageY);
+                }
+            }
+            Numeric::Word(_) => {
+                if opcode_type.compatible_with(AddressMode::AbsoluteY) {
+                    return Ok(AddressMode::AbsoluteY);
+                }
+            }
+        },
+        Operand::Indirect(_) => {
+            if opcode_type.compatible_with(AddressMode::Indirect) {
+                return Ok(AddressMode::Indirect);
+            }
+        }
+        Operand::IndirectX(_) => {
+            if opcode_type.compatible_with(AddressMode::IndirectX) {
+                return Ok(AddressMode::IndirectX);
+            }
+        }
+        Operand::IndirectY(_) => {
+            if opcode_type.compatible_with(AddressMode::IndirectY) {
+                return Ok(AddressMode::IndirectY);
+            }
+        }
+        Operand::Direct(opval) => {
+            // branches
+            if opcode_type.compatible_with(AddressMode::Relative) {
+                return Ok(AddressMode::Relative);
+            }
+
+            // jumps
+            if opcode_type.is_jump() {
+                return Ok(AddressMode::Absolute);
+            }
+
+            // literals and references
+            match opval.to_numeric(symbols)? {
+                Numeric::Byte(_) => return Ok(AddressMode::ZeroPage),
+                Numeric::Word(_) => return Ok(AddressMode::Absolute),
+            }
+        }
+    }
+
+    Err(Error::NoValidAddressMode(
+        opcode_type,
+        format!("{:?}", operand),
+    ))
+}
+
 // TODO: return an actual error message.
 pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
     // collect statements
@@ -325,82 +414,7 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
     let address_modes: Vec<AddressMode> = instructions
         .iter()
         .map(|(&opcode_type, operand)| {
-            match operand {
-                Operand::None => {
-                    if opcode_type.compatible_with(AddressMode::Implicit) {
-                        return AddressMode::Implicit;
-                    }
-                    if opcode_type.compatible_with(AddressMode::Accumulator) {
-                        return AddressMode::Accumulator;
-                    }
-                }
-                Operand::Immediate(_) => {
-                    if opcode_type.compatible_with(AddressMode::Immediate) {
-                        return AddressMode::Immediate;
-                    }
-                }
-                Operand::IndexX(opval) => match opval.to_numeric(&def_symbols).unwrap() {
-                    Numeric::Byte(_) => {
-                        if opcode_type.compatible_with(AddressMode::ZeroPageX) {
-                            return AddressMode::ZeroPageX;
-                        }
-                    }
-                    Numeric::Word(_) => {
-                        if opcode_type.compatible_with(AddressMode::AbsoluteX) {
-                            return AddressMode::AbsoluteX;
-                        }
-                    }
-                },
-                Operand::IndexY(opval) => match opval.to_numeric(&def_symbols).unwrap() {
-                    Numeric::Byte(_) => {
-                        if opcode_type.compatible_with(AddressMode::ZeroPageY) {
-                            return AddressMode::ZeroPageY;
-                        }
-                    }
-                    Numeric::Word(_) => {
-                        if opcode_type.compatible_with(AddressMode::AbsoluteY) {
-                            return AddressMode::AbsoluteY;
-                        }
-                    }
-                },
-                Operand::Indirect(_) => {
-                    if opcode_type.compatible_with(AddressMode::Indirect) {
-                        return AddressMode::Indirect;
-                    }
-                }
-                Operand::IndirectX(_) => {
-                    if opcode_type.compatible_with(AddressMode::IndirectX) {
-                        return AddressMode::IndirectX;
-                    }
-                }
-                Operand::IndirectY(_) => {
-                    if opcode_type.compatible_with(AddressMode::IndirectY) {
-                        return AddressMode::IndirectY;
-                    }
-                }
-                Operand::Direct(opval) => {
-                    // branches
-                    if opcode_type.compatible_with(AddressMode::Relative) {
-                        return AddressMode::Relative;
-                    }
-
-                    // jumps
-                    if opcode_type.is_jump() {
-                        return AddressMode::Absolute;
-                    }
-
-                    // literals and references
-                    match opval.to_numeric(&def_symbols).unwrap() {
-                        Numeric::Byte(_) => return AddressMode::ZeroPage,
-                        Numeric::Word(_) => return AddressMode::Absolute,
-                    }
-                }
-            }
-
-            panic!(
-                "incompatible operand {:?} for opcode type {:?}",
-                operand, opcode_type
-            );
+            infer_address_mode(opcode_type, &operand, &def_symbols).unwrap()
         })
         .collect();
 
