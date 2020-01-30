@@ -34,13 +34,10 @@ enum Opval<'a> {
 impl<'a> Opval<'a> {
     pub fn to_numeric(&self, symbols: &dyn SymbolTable) -> Result<Numeric, Error> {
         match self {
-            Self::Reference(s) => {
-                if let Some(n) = symbols.get(s) {
-                    Ok(n)
-                } else {
-                    Err(Error::SymbolNotFound(s.to_string()))
-                }
-            }
+            Self::Reference(s) => match symbols.get(s) {
+                Some(n) => Ok(n),
+                None => Err(Error::SymbolNotFound(s.to_string())),
+            },
             Self::Literal(n) => Ok(*n),
         }
     }
@@ -282,10 +279,9 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
         let line = line.trim();
 
         // strip comments
-        let line = if let Some(pos) = line.chars().position(|c| c == ';') {
-            line[0..pos].trim()
-        } else {
-            line
+        let line = match line.chars().position(|c| c == ';') {
+            Some(pos) => line[0..pos].trim(),
+            None => line,
         };
 
         if line.len() == 0 {
@@ -389,10 +385,8 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
                     }
 
                     // jumps
-                    if let Opval::Reference(ident) = opval {
-                        if instructions_by_label.contains_key(ident) {
-                            return AddressMode::Absolute;
-                        }
+                    if opcode_type.is_jump() {
+                        return AddressMode::Absolute;
                     }
 
                     // literals and references
@@ -495,10 +489,9 @@ pub fn assemble(src: &str, base_reloc_addr: u16) -> Vec<u8> {
             },
         };
 
-        let operand_bytes = if let Some(n) = num_opval {
-            n.to_bytes()
-        } else {
-            Vec::new()
+        let operand_bytes = match num_opval {
+            Some(n) => n.to_bytes(),
+            None => Vec::new(),
         };
 
         if operand_bytes.len() != addr_mode.operand_size() {
