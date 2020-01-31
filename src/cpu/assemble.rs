@@ -10,7 +10,11 @@ use std::fmt;
 enum Statement<'a> {
     Label(&'a str),
     Definition(&'a str, Numeric),
-    Instruction(opcode::Type, Operand<'a>),
+    Instruction(
+        opcode::Type,
+        Operand<'a>,
+        Option<&'a str>, // inline label
+    ),
 }
 
 #[derive(Debug)]
@@ -145,6 +149,7 @@ lazy_static! {
     static ref INSTRUCTION_REGEX: Regex = Regex::new(
         r"(?x)
         ^
+        ((?P<label>[_a-zA-Z]\w*):\s+)?
         (?P<mnemonic>[a-zA-Z]{3})
         (
             \s+
@@ -196,6 +201,7 @@ fn parse_statement<'a>(src: &'a str) -> Result<Statement<'a>, Error> {
         return Ok(Statement::Instruction(
             parse_mnemonic(caps.name("mnemonic").unwrap().as_str())?,
             operand,
+            caps.name("label").map(|c| c.as_str()),
         ));
     }
 
@@ -381,7 +387,11 @@ fn assemble(src: &str, base_reloc_addr: u16) -> Result<Vec<u8>, Error> {
     // To ease calculations for jumps and branches to a label at the end of the
     // source, we'll put a synthetic NOP at the end, and avoid emitting code at
     // the end.
-    statements.push(Statement::Instruction(opcode::Type::Nop, Operand::None));
+    statements.push(Statement::Instruction(
+        opcode::Type::Nop,
+        Operand::None,
+        None,
+    ));
 
     // setup tables for labels and definitions
     let mut instructions_by_label: HashMap<&str, usize> = HashMap::new();
@@ -396,8 +406,11 @@ fn assemble(src: &str, base_reloc_addr: u16) -> Result<Vec<u8>, Error> {
             Statement::Definition(ident, numeric) => {
                 definitions.insert(ident, *numeric);
             }
-            Statement::Instruction(opcode_type, operand) => {
-                instructions.push((opcode_type, operand))
+            Statement::Instruction(opcode_type, operand, inline_label) => {
+                if let Some(label) = inline_label {
+                    instructions_by_label.insert(label, instructions.len());
+                }
+                instructions.push((opcode_type, operand));
             }
         }
     }
@@ -561,7 +574,7 @@ jmp label_b ; jump to intermediate label
 jmp label_c ; jump to terminating label
 jmp ($0101) ; indirect literal
 jmp (addr) ; indirect ref
-label_b: ; intermediate label
+label_b: nop ; intermediate label (inline)
 adc $0101 ; absolute literal
 adc addr ; absolute ref
 adc $0101,x ; absolute x literal
@@ -579,10 +592,11 @@ label_c: ; terminal label
         vec![
             // hexdump generated via: https://skilldrick.github.io/easy6502
             0xCA, 0x69, 0x01, 0x69, 0x69, 0x65, 0x01, 0x65, 0x69, 0x75, 0x01, 0x75, 0x69, 0xB6,
-            0x01, 0xB6, 0x69, 0xF0, 0xED, 0xF0, 0x17, 0xF0, 0x2F, 0x4C, 0x01, 0x01, 0x4C, 0xFF,
-            0x01, 0x4C, 0x00, 0x06, 0x4C, 0x2C, 0x06, 0x4C, 0x46, 0x06, 0x6C, 0x01, 0x01, 0x6C,
-            0xFF, 0x01, 0x6D, 0x01, 0x01, 0x6D, 0xFF, 0x01, 0x7D, 0x01, 0x01, 0x7D, 0xFF, 0x01,
-            0x79, 0x01, 0x01, 0x79, 0xFF, 0x01, 0x61, 0x01, 0x61, 0x69, 0x71, 0x01, 0x71, 0x69
+            0x01, 0xB6, 0x69, 0xF0, 0xED, 0xF0, 0x17, 0xF0, 0x30, 0x4C, 0x01, 0x01, 0x4C, 0xFF,
+            0x01, 0x4C, 0x00, 0x06, 0x4C, 0x2C, 0x06, 0x4C, 0x47, 0x06, 0x6C, 0x01, 0x01, 0x6C,
+            0xFF, 0x01, 0xEA, 0x6D, 0x01, 0x01, 0x6D, 0xFF, 0x01, 0x7D, 0x01, 0x01, 0x7D, 0xFF,
+            0x01, 0x79, 0x01, 0x01, 0x79, 0xFF, 0x01, 0x61, 0x01, 0x61, 0x69, 0x71, 0x01, 0x71,
+            0x69
         ]
     );
 
