@@ -81,15 +81,7 @@ struct CompositeSymbolTable<'a>(Vec<&'a dyn SymbolTable>);
 
 impl<'a> SymbolTable for CompositeSymbolTable<'a> {
     fn get(&self, symbol: &str) -> Option<Numeric> {
-        for m in self.0.iter() {
-            let n = m.get(symbol);
-            match n {
-                Some(_) => return n,
-                None => (),
-            }
-        }
-
-        None
+        self.0.iter().find_map(|m| m.get(symbol))
     }
 }
 
@@ -196,10 +188,10 @@ fn parse_statement<'a>(src: &'a str) -> Result<Statement<'a>, Error> {
     }
 
     if let Some(caps) = INSTRUCTION_REGEX.captures(src) {
-        let mut operand = Operand::None;
-        if let Some(operand_src) = caps.name("operand") {
-            operand = parse_operand(operand_src.as_str())?;
-        }
+        let operand = match caps.name("operand") {
+            Some(operand_src) => parse_operand(operand_src.as_str())?,
+            None => Operand::None,
+        };
 
         return Ok(Statement::Instruction(
             parse_mnemonic(caps.name("mnemonic").unwrap().as_str())?,
