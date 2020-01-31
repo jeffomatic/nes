@@ -67,6 +67,13 @@ impl Numeric {
             Self::Word(n) => Some(n),
         }
     }
+
+    fn to_string(self) -> String {
+        match self {
+            Self::Byte(n) => format!("${:02x}", n),
+            Self::Word(n) => format!("${:04x}", n),
+        }
+    }
 }
 
 trait SymbolTable {
@@ -90,7 +97,7 @@ impl<'a> SymbolTable for CompositeSymbolTable<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum Error {
+pub enum Error {
     InvalidStatement(String),
     InvalidNumeric(String),
     InvalidMnemonic(String),
@@ -99,7 +106,7 @@ enum Error {
     SymbolNotFound(String),
     NoValidAddressMode(opcode::Type, String),
     BranchLabelTooFar(String),
-    LiteralInBranch(Numeric),
+    LiteralInBranch(String),
     InvalidOperandSize(AddressMode, String, usize),
 }
 
@@ -120,8 +127,8 @@ impl fmt::Display for Error {
                 opcode_type, operand_str
             ),
             Self::BranchLabelTooFar(symbol) => write!(f, "label too far from branch: {}", symbol),
-            Self::LiteralInBranch(numeric) => {
-                write!(f, "literal value used in branch: {:?}", numeric)
+            Self::LiteralInBranch(literal) => {
+                write!(f, "literal value used in branch: {}", literal)
             }
             Self::InvalidOperandSize(addr_mode, operand_str, size) => write!(
                 f,
@@ -365,7 +372,7 @@ fn infer_address_mode(
 }
 
 // TODO: return an actual error message.
-fn assemble(src: &str, base_reloc_addr: u16) -> Result<Vec<u8>, Error> {
+pub fn assemble(src: &str, base_reloc_addr: u16) -> Result<Vec<u8>, Error> {
     // collect statements
     let mut statements = Vec::new();
     for line in src.lines() {
@@ -479,7 +486,7 @@ fn assemble(src: &str, base_reloc_addr: u16) -> Result<Vec<u8>, Error> {
                                 }
                             }
                             Opval::Literal(n) => {
-                                return Err(Error::LiteralInBranch(*n));
+                                return Err(Error::LiteralInBranch(n.to_string()));
                             }
                         }
                     }
@@ -635,7 +642,7 @@ label_c: ; terminal label
     );
     assert_eq!(
         assemble("beq $01", 0),
-        Err(Error::LiteralInBranch(Numeric::Byte(1)))
+        Err(Error::LiteralInBranch("$01".to_string()))
     );
     assert_eq!(
         assemble("adc ($1010,x)", 0),
