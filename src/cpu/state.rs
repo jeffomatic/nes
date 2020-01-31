@@ -126,6 +126,14 @@ impl Cpu {
         math::bytes_to_u16_le([self.mem_read(addr), self.mem_read(addr + 1)])
     }
 
+    pub fn mem_read_buf(&self, addr: u16, len: usize) -> Vec<u8> {
+        let mut res = Vec::with_capacity(len);
+        for i in 0..len {
+            res.push(self.mem_read(addr + i as u16));
+        }
+        res
+    }
+
     pub fn mem_write(&mut self, addr: u16, v: u8) {
         match addr {
             0..=0x7FF => self.ram[addr as usize] = v,
@@ -136,6 +144,12 @@ impl Cpu {
             0xFFFE => self.vectors.irq_brk = math::u16_set_lo(self.vectors.irq_brk, v),
             0xFFFF => self.vectors.irq_brk = math::u16_set_hi(self.vectors.irq_brk, v),
             other => panic!("no memory map for address {:?}", other),
+        }
+    }
+
+    pub fn mem_write_buf(&mut self, addr: u16, buf: Vec<u8>) {
+        for (i, v) in buf.iter().enumerate() {
+            self.mem_write(addr + i as u16, *v);
         }
     }
 
