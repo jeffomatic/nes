@@ -1,10 +1,10 @@
+use super::super::ppu;
 use super::status::Status;
 use crate::math;
 
 const STACK_BASE: u16 = 0x100;
 const STACK_SIZE: usize = 0x100;
 const RAM_SIZE: usize = 1 << 11;
-const MAX_RAM_ADDR: u16 = (RAM_SIZE - 1) as u16;
 
 // Reference: http://obelisk.me.uk/6502/registers.html
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -87,12 +87,12 @@ pub struct Vectors {
     pub irq_brk: u16,
 }
 
-#[derive(Clone)]
 pub struct Cpu {
     pub cycles: u64,
     pub regs: Registers,
     pub ram: [u8; RAM_SIZE],
     pub vectors: Vectors,
+    pub ppu: ppu::Ppu,
 }
 
 impl Cpu {
@@ -102,6 +102,7 @@ impl Cpu {
             regs: Registers::new(),
             ram: [0; RAM_SIZE],
             vectors: Vectors::default(),
+            ppu: ppu::Ppu::default(),
         }
     }
 
@@ -110,8 +111,25 @@ impl Cpu {
     }
 
     pub fn mem_read(&self, addr: u16) -> u8 {
+        let addr = addr as usize;
         match addr {
-            0..=MAX_RAM_ADDR => self.ram[addr as usize],
+            // Source: https://wiki.nesdev.com/w/index.php/CPU_memory_map
+            0..=0x07FF => self.ram[addr],
+            0x0800..=0x0FFF => self.ram[addr - 0x0800],
+            0x1000..=0x17FF => self.ram[addr - 0x1000],
+            0x1800..=0x1FFF => self.ram[addr - 0x1800],
+            0x2000..=0x3FFF => match addr % 8 {
+                0 => self.ppu.regs.ppuctrl,
+                1 => self.ppu.regs.ppumask,
+                2 => self.ppu.regs.ppustatus,
+                3 => self.ppu.regs.oamaddr,
+                4 => self.ppu.regs.oamdata,
+                5 => self.ppu.regs.ppuscroll,
+                6 => self.ppu.regs.ppuaddr,
+                7 => self.ppu.regs.ppudata,
+                _ => unreachable!(),
+            },
+            0x4014 => self.ppu.regs.oamdata,
             0xFFFA => math::u16_lo(self.vectors.nmi),
             0xFFFB => math::u16_hi(self.vectors.nmi),
             0xFFFC => math::u16_lo(self.vectors.reset),
@@ -135,8 +153,24 @@ impl Cpu {
     }
 
     pub fn mem_write(&mut self, addr: u16, v: u8) {
-        match addr {
-            0..=0x7FF => self.ram[addr as usize] = v,
+        let addr = addr as usize;
+        match addr as usize {
+            0..=0x07FF => self.ram[addr] = v,
+            0x0800..=0x0FFF => self.ram[addr - 0x0800] = v,
+            0x1000..=0x17FF => self.ram[addr - 0x1000] = v,
+            0x1800..=0x1FFF => self.ram[addr - 0x1800] = v,
+            0x2000..=0x3FFF => match addr % 8 {
+                0 => self.ppu.regs.ppuctrl = v,
+                1 => self.ppu.regs.ppumask = v,
+                2 => self.ppu.regs.ppustatus = v,
+                3 => self.ppu.regs.oamaddr = v,
+                4 => self.ppu.regs.oamdata = v,
+                5 => self.ppu.regs.ppuscroll = v,
+                6 => self.ppu.regs.ppuaddr = v,
+                7 => self.ppu.regs.ppudata = v,
+                _ => unreachable!(),
+            },
+            0x4014 => self.ppu.regs.oamdata = v,
             0xFFFA => self.vectors.nmi = math::u16_set_lo(self.vectors.nmi, v),
             0xFFFB => self.vectors.nmi = math::u16_set_hi(self.vectors.nmi, v),
             0xFFFC => self.vectors.reset = math::u16_set_lo(self.vectors.reset, v),

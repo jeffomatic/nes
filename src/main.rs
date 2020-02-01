@@ -10,6 +10,7 @@ use sdl2::pixels::Color;
 use std::time::Duration;
 
 mod cpu;
+mod ppu;
 mod math;
 
 pub fn main() {
