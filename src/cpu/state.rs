@@ -102,7 +102,7 @@ impl Cpu {
             regs: Registers::new(),
             ram: [0; RAM_SIZE],
             vectors: Vectors::default(),
-            ppu: ppu::Ppu::default(),
+            ppu: ppu::Ppu::new(),
         }
     }
 
