@@ -1,3 +1,5 @@
+use super::mapper;
+
 // Reference: https://wiki.nesdev.com/w/index.php/PPU_programmer_reference
 #[derive(Default)]
 pub struct Registers {
@@ -34,14 +36,16 @@ pub struct Ppu {
     // horizontally or vertically based on a cartridge setting.
     nametables: [[u8; NAMETABLE_BYTES]; 2],
     oam: [u8; OAM_BYTES],
+    chr: Box<dyn mapper::Chr>,
 }
 
 impl Ppu {
-    pub fn new() -> Ppu {
+    pub fn new(mapper_chr: Box<dyn mapper::Chr>) -> Ppu {
         Ppu {
             regs: Registers::default(),
             nametables: [[0; NAMETABLE_BYTES]; 2],
             oam: [0; OAM_BYTES],
+            chr: mapper_chr,
         }
     }
 }

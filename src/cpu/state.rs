@@ -98,25 +98,27 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(mapper_prg: Box<dyn mapper::Prg>) -> Cpu {
+    pub fn new(mapper_prg: Box<dyn mapper::Prg>, mapper_chr: Box<dyn mapper::Chr>) -> Cpu {
         Cpu {
             cycles: 0,
             regs: Registers::new(),
             ram: [0; RAM_SIZE],
             vectors: Vectors::default(),
-            ppu: ppu::Ppu::new(),
+            ppu: ppu::Ppu::new(mapper_chr),
             mapper_prg: mapper_prg,
         }
     }
 
     pub fn new_test() -> Cpu {
+        let (mapper_prg, mapper_chr) = mapper::test::new();
+
         Cpu {
             cycles: 0,
             regs: Registers::new(),
             ram: [0; RAM_SIZE],
             vectors: Vectors::default(),
-            ppu: ppu::Ppu::new(),
-            mapper_prg: Box::new(mapper::test::new().0),
+            ppu: ppu::Ppu::new(Box::new(mapper_chr)),
+            mapper_prg: Box::new(mapper_prg),
         }
     }
 
