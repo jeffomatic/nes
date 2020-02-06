@@ -39,7 +39,7 @@ impl Operand {
 
 #[test]
 fn test_operand_accumulator() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0xAB;
 
     let op = Operand::Accumulator;
@@ -51,14 +51,14 @@ fn test_operand_accumulator() {
 
 #[test]
 fn test_operand_immediate() {
-    let cpu = Cpu::new();
+    let cpu = Cpu::new_test();
     let op = Operand::Immediate(0xAB);
     assert_eq!(op.read(&cpu), 0xAB);
 }
 
 #[test]
 fn test_operand_memory() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.mem_write(0x1F, 0xAB);
 
     let op = Operand::Memory(0x1F);
@@ -171,7 +171,7 @@ fn page_crossing_cycle_adjusment(opcode_type: opcode::Type, before: u16, after: 
 
 #[test]
 fn test_decode_implicit() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     assert_eq!(
         decode(&mut cpu, opcode::Type::Brk, AddressMode::Implicit),
         (Operand::None, 0)
@@ -181,7 +181,7 @@ fn test_decode_implicit() {
 
 #[test]
 fn test_decode_accumulator() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     assert_eq!(
         decode(&mut cpu, opcode::Type::Asl, AddressMode::Accumulator),
         (Operand::Accumulator, 0)
@@ -191,7 +191,7 @@ fn test_decode_accumulator() {
 
 #[test]
 fn test_decode_immediate() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.mem_write(0, 0xAB);
     assert_eq!(
         decode(&mut cpu, opcode::Type::Adc, AddressMode::Immediate),
@@ -202,7 +202,7 @@ fn test_decode_immediate() {
 
 #[test]
 fn test_decode_zero_page() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.mem_write(0, 0x1F);
     cpu.mem_write(0x1F, 0xAB);
     assert_eq!(
@@ -214,7 +214,7 @@ fn test_decode_zero_page() {
 
 #[test]
 fn test_decode_zero_page_x() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 1;
     cpu.mem_write(0, 0x10);
     assert_eq!(
@@ -224,7 +224,7 @@ fn test_decode_zero_page_x() {
     assert_eq!(cpu.regs.pc, 1);
 
     // zero-page wrapping
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 2;
     cpu.mem_write(0, 0xFF);
     assert_eq!(
@@ -236,7 +236,7 @@ fn test_decode_zero_page_x() {
 
 #[test]
 fn test_decode_zero_page_y() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 1;
     cpu.mem_write(0, 0x10);
     assert_eq!(
@@ -246,7 +246,7 @@ fn test_decode_zero_page_y() {
     assert_eq!(cpu.regs.pc, 1);
 
     // zero-page wrapping
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 2;
     cpu.mem_write(0, 0xFF);
     assert_eq!(
@@ -258,7 +258,7 @@ fn test_decode_zero_page_y() {
 
 #[test]
 fn test_decode_relative() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.mem_write(0, 0xAB);
     assert_eq!(
         decode(&mut cpu, opcode::Type::Beq, AddressMode::Relative),
@@ -269,7 +269,7 @@ fn test_decode_relative() {
 
 #[test]
 fn test_decode_absolute() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
     assert_eq!(
@@ -282,7 +282,7 @@ fn test_decode_absolute() {
 #[test]
 fn test_decode_absolute_x() {
     // Read-only op, no page crossing
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 0x1;
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
@@ -293,7 +293,7 @@ fn test_decode_absolute_x() {
     assert_eq!(cpu.regs.pc, 2);
 
     // Read-only op, page crossing
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 0x1;
     cpu.mem_write(0, 0xFF);
     cpu.mem_write(1, 0xAB);
@@ -304,7 +304,7 @@ fn test_decode_absolute_x() {
     assert_eq!(cpu.regs.pc, 2);
 
     // Write-only op
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 0x1;
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
@@ -315,7 +315,7 @@ fn test_decode_absolute_x() {
     assert_eq!(cpu.regs.pc, 2);
 
     // Read/write op
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 0x1;
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
@@ -329,7 +329,7 @@ fn test_decode_absolute_x() {
 #[test]
 fn test_decode_absolute_y() {
     // Read-only op, no page crossing
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 0x1;
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
@@ -340,7 +340,7 @@ fn test_decode_absolute_y() {
     assert_eq!(cpu.regs.pc, 2);
 
     // Read-only op, page crossing
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 0x1;
     cpu.mem_write(0, 0xFF);
     cpu.mem_write(1, 0xAB);
@@ -351,7 +351,7 @@ fn test_decode_absolute_y() {
     assert_eq!(cpu.regs.pc, 2);
 
     // Write-only op
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 0x1;
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
@@ -362,7 +362,7 @@ fn test_decode_absolute_y() {
     assert_eq!(cpu.regs.pc, 2);
 
     // Read/write op
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 0x1;
     cpu.mem_write(0, 0xCD);
     cpu.mem_write(1, 0xAB);
@@ -375,7 +375,7 @@ fn test_decode_absolute_y() {
 
 #[test]
 fn test_decode_indirect() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 1;
     cpu.mem_write(0, 0xFF);
     cpu.mem_write(1, 1);
@@ -390,7 +390,7 @@ fn test_decode_indirect() {
 
 #[test]
 fn test_decode_indirect_x() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 1;
     cpu.mem_write(0, 0xF);
     cpu.mem_write(0x10, 0xCD);
@@ -402,7 +402,7 @@ fn test_decode_indirect_x() {
     assert_eq!(cpu.regs.pc, 1);
 
     // zero-page wrapping
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 2;
     cpu.mem_write(0, 0xFF);
     cpu.mem_write(1, 0xCD);
@@ -417,7 +417,7 @@ fn test_decode_indirect_x() {
 #[test]
 fn test_decode_indirect_y() {
     // Read-only op, no page crossing
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 1;
     cpu.mem_write(0, 0xF);
     cpu.mem_write(0xF, 0xCD);
@@ -429,7 +429,7 @@ fn test_decode_indirect_y() {
     assert_eq!(cpu.regs.pc, 1);
 
     // Read-only op, page crossing
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 1;
     cpu.mem_write(0, 0xF);
     cpu.mem_write(0xF, 0xFF);
@@ -441,7 +441,7 @@ fn test_decode_indirect_y() {
     assert_eq!(cpu.regs.pc, 1);
 
     // Write-only op
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 1;
     cpu.mem_write(0, 0xF);
     cpu.mem_write(0xF, 0xCD);
@@ -453,7 +453,7 @@ fn test_decode_indirect_y() {
     assert_eq!(cpu.regs.pc, 1);
 
     // Read/write op
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 1;
     cpu.mem_write(0, 0xF);
     cpu.mem_write(0xF, 0xCD);

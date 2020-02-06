@@ -11,6 +11,7 @@ use std::time::Duration;
 
 mod cpu;
 mod ppu;
+mod mapper;
 mod math;
 
 pub fn main() {

@@ -8,7 +8,7 @@ pub fn clc(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_clc() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.p = Status::Carry.mask();
     clc(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.p, 0);
@@ -20,7 +20,7 @@ pub fn cld(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_cld() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.p = Status::DecimalMode.mask();
     cld(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.p, 0);
@@ -32,7 +32,7 @@ pub fn cli(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_cli() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.p = Status::InterruptDisable.mask();
     cli(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.p, 0);
@@ -44,7 +44,7 @@ pub fn clv(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_clv() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.p = Status::Overflow.mask();
     clv(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.p, 0);
@@ -56,7 +56,7 @@ pub fn sec(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_sec() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     sec(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.p, Status::Carry.mask());
 }
@@ -67,7 +67,7 @@ pub fn sed(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_sed() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     sed(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.p, Status::DecimalMode.mask());
 }
@@ -78,7 +78,7 @@ pub fn sei(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_sei() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     sei(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.p, Status::InterruptDisable.mask());
 }

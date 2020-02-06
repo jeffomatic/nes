@@ -1,3 +1,4 @@
+use super::super::mapper;
 use super::super::ppu;
 use super::status::Status;
 use crate::math;
@@ -93,16 +94,29 @@ pub struct Cpu {
     pub ram: [u8; RAM_SIZE],
     pub vectors: Vectors,
     pub ppu: ppu::Ppu,
+    pub mapper_prg: Box<dyn mapper::Prg>,
 }
 
 impl Cpu {
-    pub fn new() -> Cpu {
+    pub fn new(mapper_prg: Box<dyn mapper::Prg>) -> Cpu {
         Cpu {
             cycles: 0,
             regs: Registers::new(),
             ram: [0; RAM_SIZE],
             vectors: Vectors::default(),
             ppu: ppu::Ppu::new(),
+            mapper_prg: mapper_prg,
+        }
+    }
+
+    pub fn new_test() -> Cpu {
+        Cpu {
+            cycles: 0,
+            regs: Registers::new(),
+            ram: [0; RAM_SIZE],
+            vectors: Vectors::default(),
+            ppu: ppu::Ppu::new(),
+            mapper_prg: Box::new(mapper::test::new().0),
         }
     }
 
@@ -111,31 +125,25 @@ impl Cpu {
     }
 
     pub fn mem_read(&self, addr: u16) -> u8 {
-        let addr = addr as usize;
         match addr {
             // Source: https://wiki.nesdev.com/w/index.php/CPU_memory_map
-            0..=0x07FF => self.ram[addr],
-            0x0800..=0x0FFF => self.ram[addr - 0x0800],
-            0x1000..=0x17FF => self.ram[addr - 0x1000],
-            0x1800..=0x1FFF => self.ram[addr - 0x1800],
+            0..=0x07FF => self.ram[addr as usize],
+            0x0800..=0x0FFF => self.ram[addr as usize - 0x0800],
+            0x1000..=0x17FF => self.ram[addr as usize - 0x1000],
+            0x1800..=0x1FFF => self.ram[addr as usize - 0x1800],
             0x2000..=0x3FFF => match addr % 8 {
-                0 => self.ppu.regs.ppuctrl,
-                1 => self.ppu.regs.ppumask,
-                2 => self.ppu.regs.ppustatus,
-                3 => self.ppu.regs.oamaddr,
-                4 => self.ppu.regs.oamdata,
-                5 => self.ppu.regs.ppuscroll,
-                6 => self.ppu.regs.ppuaddr,
-                7 => self.ppu.regs.ppudata,
+                0 => unimplemented!(),
+                1 => unimplemented!(),
+                2 => unimplemented!(),
+                3 => unimplemented!(),
+                4 => unimplemented!(),
+                5 => unimplemented!(),
+                6 => unimplemented!(),
+                7 => unimplemented!(),
                 _ => unreachable!(),
             },
-            0x4014 => self.ppu.regs.oamdata,
-            0xFFFA => math::u16_lo(self.vectors.nmi),
-            0xFFFB => math::u16_hi(self.vectors.nmi),
-            0xFFFC => math::u16_lo(self.vectors.reset),
-            0xFFFD => math::u16_hi(self.vectors.reset),
-            0xFFFE => math::u16_lo(self.vectors.irq_brk),
-            0xFFFF => math::u16_hi(self.vectors.irq_brk),
+            0x4014 => unimplemented!(),
+            0x4020..=0xFFFF => self.mapper_prg.read(addr),
             other => panic!("no memory map for address {:?}", other),
         }
     }
@@ -153,30 +161,24 @@ impl Cpu {
     }
 
     pub fn mem_write(&mut self, addr: u16, v: u8) {
-        let addr = addr as usize;
-        match addr as usize {
-            0..=0x07FF => self.ram[addr] = v,
-            0x0800..=0x0FFF => self.ram[addr - 0x0800] = v,
-            0x1000..=0x17FF => self.ram[addr - 0x1000] = v,
-            0x1800..=0x1FFF => self.ram[addr - 0x1800] = v,
+        match addr {
+            0..=0x07FF => self.ram[addr as usize] = v,
+            0x0800..=0x0FFF => self.ram[addr as usize - 0x0800] = v,
+            0x1000..=0x17FF => self.ram[addr as usize - 0x1000] = v,
+            0x1800..=0x1FFF => self.ram[addr as usize - 0x1800] = v,
             0x2000..=0x3FFF => match addr % 8 {
-                0 => self.ppu.regs.ppuctrl = v,
-                1 => self.ppu.regs.ppumask = v,
-                2 => self.ppu.regs.ppustatus = v,
-                3 => self.ppu.regs.oamaddr = v,
-                4 => self.ppu.regs.oamdata = v,
-                5 => self.ppu.regs.ppuscroll = v,
-                6 => self.ppu.regs.ppuaddr = v,
-                7 => self.ppu.regs.ppudata = v,
+                0 => unimplemented!(),
+                1 => unimplemented!(),
+                2 => unimplemented!(),
+                3 => unimplemented!(),
+                4 => unimplemented!(),
+                5 => unimplemented!(),
+                6 => unimplemented!(),
+                7 => unimplemented!(),
                 _ => unreachable!(),
             },
-            0x4014 => self.ppu.regs.oamdata = v,
-            0xFFFA => self.vectors.nmi = math::u16_set_lo(self.vectors.nmi, v),
-            0xFFFB => self.vectors.nmi = math::u16_set_hi(self.vectors.nmi, v),
-            0xFFFC => self.vectors.reset = math::u16_set_lo(self.vectors.reset, v),
-            0xFFFD => self.vectors.reset = math::u16_set_hi(self.vectors.reset, v),
-            0xFFFE => self.vectors.irq_brk = math::u16_set_lo(self.vectors.irq_brk, v),
-            0xFFFF => self.vectors.irq_brk = math::u16_set_hi(self.vectors.irq_brk, v),
+            0x4014 => unimplemented!(),
+            0x4020..=0xFFFF => self.mapper_prg.write(addr, v),
             other => panic!("no memory map for address {:?}", other),
         }
     }

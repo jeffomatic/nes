@@ -31,39 +31,39 @@ pub fn adc(cpu: &mut Cpu, operand: Operand) {
 #[test]
 fn test_adc() {
     // no-mask operation
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     adc(&mut cpu, Operand::Immediate(1));
     assert_eq!(cpu.regs.a, 1);
     assert_eq!(cpu.regs.p, 0);
 
     // incorporates carry
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.p = Status::Carry.mask();
     adc(&mut cpu, Operand::Immediate(1));
     assert_eq!(cpu.regs.a, 2);
     assert_eq!(cpu.regs.p, 0);
 
     // sets zero mask
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     adc(&mut cpu, Operand::Immediate(0));
     assert_eq!(cpu.regs.a, 0);
     assert_eq!(cpu.regs.p, Status::Zero.mask());
 
     // sets negative mask
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     adc(&mut cpu, Operand::Immediate(0xFF));
     assert_eq!(cpu.regs.a, 0xFF);
     assert_eq!(cpu.regs.p, Status::Negative.mask());
 
     // sets carry
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0xFF;
     adc(&mut cpu, Operand::Immediate(1));
     assert_eq!(cpu.regs.a, 0);
     assert_eq!(cpu.regs.p, Status::Carry.mask() | Status::Zero.mask());
 
     // incorporates carry to trigger carry
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.p = Status::Carry.mask();
     cpu.regs.a = 0;
     adc(&mut cpu, Operand::Immediate(0xFF));
@@ -71,7 +71,7 @@ fn test_adc() {
     assert_eq!(cpu.regs.p, Status::Carry.mask() | Status::Zero.mask());
 
     // positive overflow
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0x7F;
     adc(&mut cpu, Operand::Immediate(0x7F));
     assert_eq!(cpu.regs.a, 0xFE);
@@ -81,7 +81,7 @@ fn test_adc() {
     );
 
     // negative overflow
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0x80;
     adc(&mut cpu, Operand::Immediate(0x80));
     assert_eq!(cpu.regs.a, 0);
@@ -91,7 +91,7 @@ fn test_adc() {
     );
 
     // carry does not trigger overflow
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.p = Status::Carry.mask();
     cpu.regs.a = 0x7F;
     adc(&mut cpu, Operand::Immediate(0x80));
@@ -127,7 +127,7 @@ pub fn sbc(cpu: &mut Cpu, operand: Operand) {
 #[test]
 fn test_sbc() {
     // no-borrow subtraction, positive result
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 5;
     cpu.regs.p = Status::Carry.mask();
     sbc(&mut cpu, Operand::Immediate(3));
@@ -135,7 +135,7 @@ fn test_sbc() {
     assert_eq!(cpu.regs.p, Status::Carry.mask());
 
     // no-borrow subtraction, zero result
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 5;
     cpu.regs.p = Status::Carry.mask();
     sbc(&mut cpu, Operand::Immediate(5));
@@ -143,7 +143,7 @@ fn test_sbc() {
     assert_eq!(cpu.regs.p, Status::Carry.mask() | Status::Zero.mask());
 
     // no-borrow subtraction, negative result
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 5;
     cpu.regs.p = Status::Carry.mask();
     sbc(&mut cpu, Operand::Immediate(6));
@@ -151,7 +151,7 @@ fn test_sbc() {
     assert_eq!(cpu.regs.p, Status::Negative.mask());
 
     // no-borrow subtraction, positive result with overflow
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0x7F;
     cpu.regs.p = Status::Carry.mask();
     sbc(&mut cpu, Operand::Immediate(0xFF));
@@ -162,7 +162,7 @@ fn test_sbc() {
     );
 
     // no-borrow subtraction, negative result with overflow
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0x80;
     cpu.regs.p = Status::Carry.mask();
     sbc(&mut cpu, Operand::Immediate(1));
@@ -170,21 +170,21 @@ fn test_sbc() {
     assert_eq!(cpu.regs.p, Status::Carry.mask() | Status::Overflow.mask());
 
     // borrow subtraction, positive result
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 5;
     sbc(&mut cpu, Operand::Immediate(3));
     assert_eq!(cpu.regs.a, 1);
     assert_eq!(cpu.regs.p, Status::Carry.mask());
 
     // borrow subtraction, zero result
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 5;
     sbc(&mut cpu, Operand::Immediate(4));
     assert_eq!(cpu.regs.a, 0);
     assert_eq!(cpu.regs.p, Status::Carry.mask() | Status::Zero.mask());
 
     // borrow subtraction, negative result
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 5;
     sbc(&mut cpu, Operand::Immediate(5));
     assert_eq!(cpu.regs.a, 0xFF);
@@ -207,35 +207,35 @@ fn test_cmp() {
     // Negative is set if A - M is negative
 
     // A < M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 3;
     cpu.mem_write(0x10, 4);
     cmp(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Negative.mask());
 
     // A < M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 2;
     cpu.mem_write(0x10, 0xFF);
     cmp(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, 0);
 
     // A = M
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 3;
     cpu.mem_write(0x10, 3);
     cmp(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Carry.mask() | Status::Zero.mask());
 
     // A > M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 2;
     cpu.mem_write(0x10, 1);
     cmp(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Carry.mask());
 
     // A > M, N = 1
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0xFF;
     cpu.mem_write(0xFE, 1);
     cmp(&mut cpu, Operand::Memory(0x10));
@@ -253,35 +253,35 @@ fn test_cpx() {
     // See cmp implementation for notes
 
     // X < M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 3;
     cpu.mem_write(0x10, 4);
     cpx(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Negative.mask());
 
     // X < M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 2;
     cpu.mem_write(0x10, 0xFF);
     cpx(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, 0);
 
     // X = M
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 3;
     cpu.mem_write(0x10, 3);
     cpx(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Carry.mask() | Status::Zero.mask());
 
     // X > M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 2;
     cpu.mem_write(0x10, 1);
     cpx(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Carry.mask());
 
     // X > M, N = 1
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 0xFF;
     cpu.mem_write(0xFE, 1);
     cpx(&mut cpu, Operand::Memory(0x10));
@@ -299,35 +299,35 @@ fn test_cpy() {
     // See cmp implementation for notes
 
     // Y < M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 3;
     cpu.mem_write(0x10, 4);
     cpy(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Negative.mask());
 
     // Y < M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 2;
     cpu.mem_write(0x10, 0xFF);
     cpy(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, 0);
 
     // Y = M
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 3;
     cpu.mem_write(0x10, 3);
     cpy(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Carry.mask() | Status::Zero.mask());
 
     // Y > M, N = 0
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 2;
     cpu.mem_write(0x10, 1);
     cpy(&mut cpu, Operand::Memory(0x10));
     assert_eq!(cpu.regs.p, Status::Carry.mask());
 
     // Y > M, N = 1
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 0xFF;
     cpu.mem_write(0xFE, 1);
     cpy(&mut cpu, Operand::Memory(0x10));

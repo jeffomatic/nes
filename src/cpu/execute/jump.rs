@@ -7,7 +7,7 @@ pub fn jmp(cpu: &mut Cpu, operand: Operand) {
 
 #[test]
 fn test_jmp() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.pc = 0x10;
     jmp(&mut cpu, Operand::Memory(0x20));
     assert_eq!(cpu.regs.pc, 0x20);
@@ -20,7 +20,7 @@ pub fn jsr(cpu: &mut Cpu, operand: Operand) {
 
 #[test]
 fn test_jsr() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.pc = 0x202;
     jsr(&mut cpu, Operand::Memory(0x300));
     assert_eq!(cpu.stack_peek16(0), 0x201);
@@ -33,7 +33,7 @@ pub fn rts(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_rts() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.pc = 0x300;
     cpu.stack_push(0x69); // this is just a sentinel for the test
     cpu.stack_push16(0x201);

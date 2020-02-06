@@ -17,7 +17,7 @@ impl state::Cpu {
 
 #[test]
 fn test() {
-    let mut cpu = state::Cpu::new();
+    let mut cpu = state::Cpu::new_test();
     cpu.mem_write(0, 0x69); // adc #$01
     cpu.mem_write(1, 0x01);
     cpu.mem_write(2, 0x69); // adc #$FF
@@ -75,7 +75,7 @@ bmi loop
 brk
     ";
 
-    let mut cpu = state::Cpu::new();
+    let mut cpu = state::Cpu::new_test();
     cpu.mem_write_buf(0, assemble::assemble(asm, 0).unwrap());
 
     while !cpu.regs.status_check(status::Status::BreakCommand) {

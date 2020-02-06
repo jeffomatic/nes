@@ -11,7 +11,7 @@ pub fn brk(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_brk() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.pc = 0x201;
     cpu.regs.p = 0b1000_0001;
     cpu.mem_write(0xFFFE, 0xFF);
@@ -30,7 +30,7 @@ pub fn rti(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_rti() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.stack_push(0x69); // sentinel
     cpu.stack_push16(0x200); // PC
     cpu.stack_push(1); // status

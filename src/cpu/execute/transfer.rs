@@ -9,18 +9,18 @@ pub fn tax(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_tax() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 1;
     tax(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.x, 1);
     assert_eq!(cpu.regs.p, 0);
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     tax(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.x, 0);
     assert_eq!(cpu.regs.p, Status::Zero.mask());
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0xFF;
     tax(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.x, 0xFF);
@@ -34,18 +34,18 @@ pub fn tay(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_tay() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 1;
     tay(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.y, 1);
     assert_eq!(cpu.regs.p, 0);
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     tay(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.y, 0);
     assert_eq!(cpu.regs.p, Status::Zero.mask());
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.a = 0xFF;
     tay(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.y, 0xFF);
@@ -59,19 +59,19 @@ pub fn txa(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_txa() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 1;
     txa(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.a, 1);
     assert_eq!(cpu.regs.p, 0);
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 0;
     txa(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.a, 0);
     assert_eq!(cpu.regs.p, Status::Zero.mask());
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.x = 0xFF;
     txa(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.a, 0xFF);
@@ -85,19 +85,19 @@ pub fn tya(cpu: &mut Cpu, _operand: Operand) {
 
 #[test]
 fn test_tya() {
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 1;
     tya(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.a, 1);
     assert_eq!(cpu.regs.p, 0);
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 0;
     tya(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.a, 0);
     assert_eq!(cpu.regs.p, Status::Zero.mask());
 
-    let mut cpu = Cpu::new();
+    let mut cpu = Cpu::new_test();
     cpu.regs.y = 0xFF;
     tya(&mut cpu, Operand::None);
     assert_eq!(cpu.regs.a, 0xFF);
