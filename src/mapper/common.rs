@@ -6,7 +6,7 @@ pub trait Prg {
     fn write(&mut self, addr: u16, v: u8);
 }
 
-pub trait Chr {
+pub trait Ppu {
     fn read(&self, addr: u16) -> u8;
     fn write(&mut self, addr: u16, v: u8);
 }

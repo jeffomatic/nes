@@ -98,7 +98,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(mapper_prg: Box<dyn mapper::Prg>, mapper_chr: Box<dyn mapper::Chr>) -> Cpu {
+    pub fn new(mapper_prg: Box<dyn mapper::Prg>, mapper_chr: Box<dyn mapper::Ppu>) -> Cpu {
         Cpu {
             cycles: 0,
             regs: Registers::new(),

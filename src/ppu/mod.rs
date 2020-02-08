@@ -30,22 +30,17 @@ const NAMETABLE_BYTES: usize = (NAMETABLE_ROWS * NAMETABLE_COLS) + ATTRIBUTE_TAB
 const OAM_BYTES: usize = 256;
 
 pub struct Ppu {
-    pub regs: Registers,
-
-    // CIRAM has two nametables' worth of memory, which are mirrored either
-    // horizontally or vertically based on a cartridge setting.
-    nametables: [[u8; NAMETABLE_BYTES]; 2],
+    regs: Registers,
     oam: [u8; OAM_BYTES],
-    chr: Box<dyn mapper::Chr>,
+    mapper: Box<dyn mapper::Ppu>,
 }
 
 impl Ppu {
-    pub fn new(mapper_chr: Box<dyn mapper::Chr>) -> Ppu {
+    pub fn new(mapper: Box<dyn mapper::Ppu>) -> Ppu {
         Ppu {
             regs: Registers::default(),
-            nametables: [[0; NAMETABLE_BYTES]; 2],
             oam: [0; OAM_BYTES],
-            chr: mapper_chr,
+            mapper: mapper,
         }
     }
 }

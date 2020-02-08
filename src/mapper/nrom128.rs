@@ -5,8 +5,8 @@ use super::common;
 pub const PRG_SIZE: usize = 1 << 13;
 pub const CHR_SIZE: usize = 1 << 12;
 
-pub fn new(prg: &Vec<u8>, chr: &Vec<u8>) -> (Prg, Chr) {
-    (Prg(prg.clone()), Chr(chr.clone()))
+pub fn new(prg: &Vec<u8>, chr: &Vec<u8>) -> (Prg, Ppu) {
+    (Prg(prg.clone()), Ppu(chr.clone()))
 }
 
 pub struct Prg(Vec<u8>);
@@ -25,9 +25,9 @@ impl common::Prg for Prg {
     }
 }
 
-pub struct Chr(Vec<u8>);
+pub struct Ppu(Vec<u8>);
 
-impl common::Chr for Chr {
+impl common::Ppu for Ppu {
     fn read(&self, addr: u16) -> u8 {
         return (*self.0)[addr as usize];
     }

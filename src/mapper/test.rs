@@ -1,7 +1,7 @@
 use super::common;
 
-pub fn new() -> (Prg, Chr) {
-    (Prg(vec![0; 0x8000]), Chr(vec![0; 0x800]))
+pub fn new() -> (Prg, Ppu) {
+    (Prg(vec![0; 0x8000]), Ppu(vec![0; 0x800]))
 }
 
 pub struct Prg(Vec<u8>);
@@ -22,9 +22,9 @@ impl common::Prg for Prg {
     }
 }
 
-pub struct Chr(Vec<u8>);
+pub struct Ppu(Vec<u8>);
 
-impl common::Chr for Chr {
+impl common::Ppu for Ppu {
     fn read(&self, addr: u16) -> u8 {
         return (*self.0)[addr as usize];
     }
