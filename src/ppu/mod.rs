@@ -1,5 +1,7 @@
 use super::mapper;
 
+mod palette;
+
 // Reference: https://wiki.nesdev.com/w/index.php/PPU_programmer_reference
 #[derive(Default)]
 pub struct Registers {
