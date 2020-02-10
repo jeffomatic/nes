@@ -33,14 +33,15 @@ const PALETTE_BYTES: usize = BG_SPRITE_PALETTES * COLORS_PER_PALETTE;
 
 pub const SCREEN_WIDTH: usize = NAMETABLE_COLS * TILE_PIXELS;
 pub const SCREEN_HEIGHT: usize = NAMETABLE_ROWS * TILE_PIXELS;
-pub const FRAMEBUFFER_BYTES: usize = SCREEN_HEIGHT * SCREEN_WIDTH * 3; // 3 colors per pixel
+pub const SCREEN_ROW_PITCH: usize = SCREEN_WIDTH * 3; // 3 colors per pixel
+pub const FRAMEBUFFER_BYTES: usize = SCREEN_HEIGHT * SCREEN_ROW_PITCH;
 
 pub struct Ppu {
     regs: Registers,
     oam: [u8; OAM_BYTES],
     palette: [u8; PALETTE_BYTES],
     mapper: Box<dyn mapper::Ppu>,
-    framebuf: [u8; FRAMEBUFFER_BYTES],
+    pub framebuf: [u8; FRAMEBUFFER_BYTES],
 }
 
 impl Ppu {
