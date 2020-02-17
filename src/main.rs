@@ -76,7 +76,9 @@ pub fn main() {
             }
         }
 
-        texture.update(None, &ppu.framebuf, ppu::SCREEN_ROW_PITCH);
+        texture
+            .update(None, &ppu.framebuf, ppu::SCREEN_ROW_PITCH)
+            .unwrap();
         canvas.copy(&texture, None, None).unwrap();
         canvas.present();
 
