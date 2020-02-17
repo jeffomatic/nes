@@ -1,7 +1,10 @@
 use super::common;
 
 pub fn new() -> (Prg, Ppu) {
-    (Prg(vec![0; 0x8000]), Ppu(vec![0; 0x800]))
+    (
+        Prg(vec![0; 0x8000]),
+        Ppu(vec![0; 0x3000]), // large enough for pattern data and 4 full nametables
+    )
 }
 
 pub struct Prg(Vec<u8>);
